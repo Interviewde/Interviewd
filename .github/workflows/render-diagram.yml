@@ -28,8 +28,11 @@ jobs:
       - name: Install Mermaid CLI
         run: npm install -g @mermaid-js/mermaid-cli
 
+      - name: Create Puppeteer config
+        run: echo '{"args":["--no-sandbox"]}' > /tmp/puppeteer-config.json
+
       - name: Render diagram to SVG
-        run: mmdc -i docs/architecture.mmd -o docs/architecture.svg -b transparent
+        run: mmdc -i docs/architecture.mmd -o docs/architecture.svg -b transparent -p /tmp/puppeteer-config.json
 
       - name: Commit rendered SVG
         run: |

@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from interviewd.config import STTConfig
+
 
 class STTAdapter(ABC):
     """Base class for all Speech-to-Text adapters.
@@ -13,6 +15,10 @@ class STTAdapter(ABC):
     with a provider keyword argument. Registration and discovery are automatic:
 
         class MyAdapter(STTAdapter, provider="my_provider"):
+            def __init__(self, config: STTConfig):
+                super().__init__(config)
+                # initialise your client here
+
             async def transcribe(self, audio: bytes) -> str:
                 ...
 
@@ -21,6 +27,9 @@ class STTAdapter(ABC):
     """
 
     _registry: dict[str, type["STTAdapter"]] = {}
+
+    def __init__(self, config: STTConfig):
+        self.config = config
 
     def __init_subclass__(cls, provider: str | None = None, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -32,7 +41,7 @@ class STTAdapter(ABC):
         """Convert raw audio bytes to a text transcript.
 
         Args:
-            audio: Raw PCM audio bytes captured from the microphone.
+            audio: Raw PCM audio bytes in WAV format captured from the microphone.
 
         Returns:
             The transcribed text string.

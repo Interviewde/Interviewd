@@ -3,6 +3,7 @@ import pkgutil
 from pathlib import Path
 
 from interviewd.adapters.stt.base import STTAdapter
+from interviewd.config import STTConfig
 
 
 def _autodiscover() -> None:
@@ -13,12 +14,12 @@ def _autodiscover() -> None:
             importlib.import_module(f"interviewd.adapters.stt.{module_name}")
 
 
-def get_stt_adapter(provider: str) -> STTAdapter:
+def get_stt_adapter(config: STTConfig) -> STTAdapter:
     _autodiscover()
-    if provider not in STTAdapter._registry:
+    if config.provider not in STTAdapter._registry:
         raise ValueError(
-            f"Unknown STT provider '{provider}'. "
+            f"Unknown STT provider '{config.provider}'. "
             f"Available providers: {list(STTAdapter._registry)}\n"
             f"See docs/decisions/001-adapter-strategy.md to add a new provider."
         )
-    return STTAdapter._registry[provider]()
+    return STTAdapter._registry[config.provider](config)

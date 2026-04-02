@@ -3,6 +3,7 @@ import pkgutil
 from pathlib import Path
 
 from interviewd.adapters.tts.base import TTSAdapter
+from interviewd.config import TTSConfig
 
 
 def _autodiscover() -> None:
@@ -13,12 +14,12 @@ def _autodiscover() -> None:
             importlib.import_module(f"interviewd.adapters.tts.{module_name}")
 
 
-def get_tts_adapter(provider: str) -> TTSAdapter:
+def get_tts_adapter(config: TTSConfig) -> TTSAdapter:
     _autodiscover()
-    if provider not in TTSAdapter._registry:
+    if config.provider not in TTSAdapter._registry:
         raise ValueError(
-            f"Unknown TTS provider '{provider}'. "
+            f"Unknown TTS provider '{config.provider}'. "
             f"Available providers: {list(TTSAdapter._registry)}\n"
             f"See docs/decisions/001-adapter-strategy.md to add a new provider."
         )
-    return TTSAdapter._registry[provider]()
+    return TTSAdapter._registry[config.provider](config)

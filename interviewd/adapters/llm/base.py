@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import AsyncIterator
 
+from interviewd.config import LLMConfig
+
 
 class LLMAdapter(ABC):
     """Base class for all LLM adapters.
@@ -22,6 +24,9 @@ class LLMAdapter(ABC):
     with a provider keyword argument. Registration and discovery are automatic:
 
         class MyAdapter(LLMAdapter, provider="my_provider"):
+            def __init__(self, config: LLMConfig):
+                super().__init__(config)
+
             async def complete(self, messages, stream=True) -> str:
                 ...
 
@@ -30,6 +35,9 @@ class LLMAdapter(ABC):
     """
 
     _registry: dict[str, type["LLMAdapter"]] = {}
+
+    def __init__(self, config: LLMConfig):
+        self.config = config
 
     def __init_subclass__(cls, provider: str | None = None, **kwargs):
         super().__init_subclass__(**kwargs)

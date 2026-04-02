@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "interviewd"
+version = "0.1.0"
+description = "Open source voice agent for mock interview practice"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "structlog>=24.0",
+    "langgraph>=0.2",
+    "google-generativeai>=0.8",
+    "groq>=0.11",
+    "edge-tts>=6.1",
+    "sounddevice>=0.5",
+    "numpy>=1.26",
+    "instructor>=1.4",
+    "sqlalchemy>=2.0",
+    "litellm>=1.40",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+interviewd = "interviewd.cli.main:app"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

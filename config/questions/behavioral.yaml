@@ -1,0 +1,60 @@
+questions:
+  - id: b001
+    text: "Tell me about a time you had to deal with a difficult team member."
+    tags: [teamwork, conflict]
+    difficulty: mid
+    follow_up: "What would you do differently if faced with the same situation today?"
+
+  - id: b002
+    text: "Describe a project where you had to meet a tight deadline."
+    tags: [time_management, pressure]
+    difficulty: entry
+    follow_up: "How did you prioritize tasks when everything felt urgent?"
+
+  - id: b003
+    text: "Give me an example of when you showed leadership without a formal title."
+    tags: [leadership, influence]
+    difficulty: mid
+    follow_up: "What was the outcome and what did you learn about your leadership style?"
+
+  - id: b004
+    text: "Tell me about a time you failed. How did you handle it?"
+    tags: [resilience, self-awareness]
+    difficulty: mid
+    follow_up: "What systems or habits did you put in place to avoid repeating it?"
+
+  - id: b005
+    text: "Describe a situation where you had to convince someone who disagreed with your approach."
+    tags: [communication, influence]
+    difficulty: senior
+    follow_up: "Would you approach that conversation differently now?"
+
+  - id: b006
+    text: "Tell me about a time you had to learn something quickly under pressure."
+    tags: [learning, adaptability]
+    difficulty: entry
+    follow_up: "What learning strategies worked best for you in that situation?"
+
+  - id: b007
+    text: "Give an example of when you had to make a decision with incomplete information."
+    tags: [decision_making, ambiguity]
+    difficulty: senior
+    follow_up: "How did you validate your decision after the fact?"
+
+  - id: b008
+    text: "Tell me about a time you went above and beyond what was expected of you."
+    tags: [ownership, initiative]
+    difficulty: entry
+    follow_up: "Was it worth it? What motivated you?"
+
+  - id: b009
+    text: "Describe a conflict between your team and another team. How did you resolve it?"
+    tags: [conflict, collaboration]
+    difficulty: senior
+    follow_up: "What would you do differently to prevent that conflict from occurring?"
+
+  - id: b010
+    text: "Tell me about the most complex project you have worked on."
+    tags: [complexity, ownership]
+    difficulty: staff
+    follow_up: "How did you manage the technical and human complexity simultaneously?"

@@ -1,0 +1,29 @@
+stt:
+  provider: groq          # groq | whisper_local
+  model: whisper-large-v3-turbo
+  language: en
+
+tts:
+  provider: edge_tts      # edge_tts | piper
+  voice: en-US-AriaNeural
+
+llm:
+  provider: gemini        # gemini | groq | openrouter | mistral | cerebras
+  model: gemini-1.5-flash
+  temperature: 0.7
+  max_tokens: 1024
+  streaming: true
+
+interview:
+  type: behavioral        # behavioral | technical | hr | system_design
+  difficulty: mid         # entry | mid | senior | staff
+  num_questions: 5
+  time_limit_per_question: 120  # seconds
+  persona: neutral        # friendly | neutral | adversarial
+  language: en
+
+paths:
+  question_bank: config/questions
+  session_store: .interviewd/sessions
+
+log_level: INFO

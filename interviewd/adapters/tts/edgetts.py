@@ -1,8 +1,6 @@
 import io
 
 import edge_tts
-import sounddevice as sd
-import soundfile as sf
 
 from interviewd.adapters.tts.base import TTSAdapter
 from interviewd.config import TTSConfig
@@ -52,6 +50,9 @@ class EdgeTTSAdapter(TTSAdapter, provider="edge_tts"):
         Args:
             text: The text to be spoken aloud.
         """
+        import sounddevice as sd
+        import soundfile as sf
+
         audio_bytes = await self.synthesize(text)
         data, samplerate = sf.read(io.BytesIO(audio_bytes))
         sd.play(data, samplerate)

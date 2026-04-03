@@ -2,9 +2,6 @@ import asyncio
 import io
 import wave
 
-import sounddevice as sd
-import soundfile as sf
-
 from interviewd.adapters.tts.base import TTSAdapter
 from interviewd.config import TTSConfig
 
@@ -75,6 +72,9 @@ class PiperTTSAdapter(TTSAdapter, provider="piper"):
         Args:
             text: The text to be spoken aloud.
         """
+        import sounddevice as sd
+        import soundfile as sf
+
         audio_bytes = await self.synthesize(text)
         data, samplerate = sf.read(io.BytesIO(audio_bytes))
         sd.play(data, samplerate)

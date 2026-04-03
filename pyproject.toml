@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "interviewd"
@@ -34,6 +34,9 @@ dev = [
 
 [project.scripts]
 interviewd = "interviewd.cli.main:app"
+
+[tool.setuptools.packages.find]
+include = ["interviewd*"]
 
 [tool.ruff]
 line-length = 88

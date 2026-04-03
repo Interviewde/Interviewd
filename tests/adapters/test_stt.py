@@ -9,7 +9,8 @@ from interviewd.config import STTConfig
 def test_groq_adapter_is_registered():
     """Groq adapter should be auto-discovered and available by name."""
     config = STTConfig(provider="groq")
-    adapter = get_stt_adapter(config)
+    with patch("interviewd.adapters.stt.groq.AsyncGroq"):
+        adapter = get_stt_adapter(config)
     assert adapter is not None
     assert adapter.config.provider == "groq"
 
@@ -25,7 +26,8 @@ def test_whisper_local_adapter_is_registered():
 def test_adapter_receives_config():
     """Adapter should store the config passed from the registry."""
     config = STTConfig(provider="groq", model="whisper-large-v3", language="fr")
-    adapter = get_stt_adapter(config)
+    with patch("interviewd.adapters.stt.groq.AsyncGroq"):
+        adapter = get_stt_adapter(config)
     assert adapter.config.model == "whisper-large-v3"
     assert adapter.config.language == "fr"
 

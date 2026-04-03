@@ -208,3 +208,6 @@ __marimo__/
 
 # Interviewd — session data and local state
 .interviewd/
+
+# Local dev scripts (live mic tests, one-off experiments — not for CI)
+local/

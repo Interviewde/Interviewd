@@ -48,10 +48,20 @@ class SileroVADAdapter(VADAdapter, provider="silero"):
             import numpy as np
             import torch
 
+            # Silero requires exactly 512 samples at 16kHz (256 at 8kHz).
+            # Split the input into fixed windows and return True if any window
+            # exceeds the threshold — lets callers pass larger buffers freely.
+            window_size = 512 if self.config.sample_rate == 16000 else 256
+
             audio_np = np.frombuffer(audio, dtype=np.int16).astype(np.float32) / 32768.0
-            audio_tensor = torch.from_numpy(audio_np)
-            confidence: float = self.model(audio_tensor, self.config.sample_rate).item()
-            return confidence >= self.config.threshold
+            for i in range(0, len(audio_np) - window_size + 1, window_size):
+                window = audio_np[i : i + window_size]
+                confidence: float = self.model(
+                    torch.from_numpy(window), self.config.sample_rate
+                ).item()
+                if confidence >= self.config.threshold:
+                    return True
+            return False
 
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _run)

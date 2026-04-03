@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from interviewd.config import TTSConfig
+
 
 class TTSAdapter(ABC):
     """Base class for all Text-to-Speech adapters.
@@ -13,6 +15,9 @@ class TTSAdapter(ABC):
     with a provider keyword argument. Registration and discovery are automatic:
 
         class MyAdapter(TTSAdapter, provider="my_provider"):
+            def __init__(self, config: TTSConfig):
+                super().__init__(config)
+
             async def speak(self, text: str) -> None:
                 ...
 
@@ -21,6 +26,9 @@ class TTSAdapter(ABC):
     """
 
     _registry: dict[str, type["TTSAdapter"]] = {}
+
+    def __init__(self, config: TTSConfig):
+        self.config = config
 
     def __init_subclass__(cls, provider: str | None = None, **kwargs):
         super().__init_subclass__(**kwargs)

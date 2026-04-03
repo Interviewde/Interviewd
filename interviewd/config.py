@@ -23,6 +23,14 @@ class TTSConfig(BaseModel):
     voice: str = "en-US-AriaNeural"
 
 
+class VADConfig(BaseModel):
+    # Same reasoning as STTConfig.provider — closed set of built-in providers.
+    # See docs/decisions/001-adapter-strategy.md.
+    provider: Literal["silero"] = "silero"
+    threshold: float = 0.5
+    sample_rate: int = 16000
+
+
 class LLMConfig(BaseModel):
     # Plain str — LiteLLM supports 100+ providers via config alone so this is
     # genuinely open-ended. Validation happens at adapter lookup time.
@@ -59,6 +67,7 @@ class Settings(BaseSettings):
 
     stt: STTConfig = STTConfig()
     tts: TTSConfig = TTSConfig()
+    vad: VADConfig = VADConfig()
     llm: LLMConfig = LLMConfig()
     interview: InterviewConfig = InterviewConfig()
     paths: PathsConfig = PathsConfig()

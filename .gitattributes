@@ -1,0 +1,12 @@
+# Normalize all text files to LF in the repo, check out as-is on all platforms.
+* text=auto eol=lf
+
+# Force binary files to never be modified.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.onnx binary
+*.pt binary
+*.pth binary

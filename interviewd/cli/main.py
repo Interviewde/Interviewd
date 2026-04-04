@@ -1,8 +1,30 @@
 import asyncio
+from typing import Optional
 
 import typer
 
 app = typer.Typer(help="Interviewd — voice mock interview agent")
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        from importlib.metadata import version, PackageNotFoundError
+        try:
+            ver = version("interviewd")
+        except PackageNotFoundError:
+            ver = "dev"
+        typer.echo(f"interviewd {ver}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: Optional[bool] = typer.Option(
+        None, "--version", "-V", callback=_version_callback, is_eager=True,
+        help="Show version and exit.",
+    ),
+) -> None:
+    pass
 
 _CONFIG_OPTION = typer.Option("config/default.yaml", help="Path to config YAML")
 
@@ -31,6 +53,22 @@ def interview(
     from interviewd.engine.voice_loop import VoiceLoop
     from interviewd.scoring.scorer import Scorer
     from interviewd.store.session_store import SessionStore
+
+    _VALID_TYPES = ("behavioral", "technical", "hr", "system_design")
+    _VALID_DIFFICULTIES = ("entry", "mid", "senior", "staff")
+
+    if type not in _VALID_TYPES:
+        typer.echo(
+            f"Invalid interview type '{type}'. Choose from: {', '.join(_VALID_TYPES)}",
+            err=True,
+        )
+        raise typer.Exit(1)
+    if difficulty not in _VALID_DIFFICULTIES:
+        typer.echo(
+            f"Invalid difficulty '{difficulty}'. Choose from: {', '.join(_VALID_DIFFICULTIES)}",
+            err=True,
+        )
+        raise typer.Exit(1)
 
     settings = load_settings(config)
 

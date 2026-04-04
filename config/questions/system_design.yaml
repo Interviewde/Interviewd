@@ -1,0 +1,66 @@
+questions:
+  # --- mid ---
+
+  - id: sd001
+    text: "Design a system to collect, store, and query audit logs for a regulated application that must retain records for seven years."
+    tags: [storage, compliance, observability]
+    difficulty: mid
+    follow_up: "How would your design change if the query latency SLA dropped from minutes to seconds?"
+
+  - id: sd002
+    text: "How would you design an idempotent API layer for a payment or claims-processing service where duplicate requests must never cause double-processing?"
+    tags: [idempotency, reliability, distributed_systems]
+    difficulty: mid
+    follow_up: "Where does your approach break down at very high throughput, and how would you address that?"
+
+  - id: sd003
+    text: "Walk me through how you would design a feature flag system that supports gradual rollouts, A/B testing, and instant kill-switches."
+    tags: [rollout, risk_management, observability]
+    difficulty: mid
+    follow_up: "How would you make sure the system doesn't become a graveyard of flags nobody dares to clean up?"
+
+  # --- senior ---
+
+  - id: sd004
+    text: "Design a data pipeline that must be reliable, replayable, and fully observable — processing events from multiple upstream sources into a reporting store."
+    tags: [data_pipeline, reliability, observability]
+    difficulty: senior
+    follow_up: "How do you handle late-arriving data without reprocessing the entire history?"
+
+  - id: sd005
+    text: "How would you architect a multi-tenant platform where different tenants have different data residency and compliance requirements?"
+    tags: [multi_tenancy, compliance, architecture]
+    difficulty: senior
+    follow_up: "How does your design behave when a tenant's compliance requirements change after they are already onboarded?"
+
+  - id: sd006
+    text: "Design an event-driven system where producers emit at high throughput but downstream consumers process at wildly different speeds."
+    tags: [event_driven, backpressure, scalability]
+    difficulty: senior
+    follow_up: "How do you prevent a slow consumer from affecting the reliability of faster ones?"
+
+  - id: sd007
+    text: "How would you design the rollback and recovery strategy for a system that applies schema migrations to a large production database with no downtime window?"
+    tags: [migrations, reliability, zero_downtime]
+    difficulty: senior
+    follow_up: "What's the hardest class of migration to roll back, and how do you approach it?"
+
+  # --- staff ---
+
+  - id: sd008
+    text: "Walk me through how you would make an existing monolith incrementally more modular without a big-bang rewrite — while keeping the product shipping."
+    tags: [architecture, migration, risk_management]
+    difficulty: staff
+    follow_up: "How do you decide what to extract first and how do you measure progress?"
+
+  - id: sd009
+    text: "How would you design a platform that abstracts away the differences between cloud providers so engineering teams can deploy workloads portably?"
+    tags: [cloud, abstraction, platform_engineering]
+    difficulty: staff
+    follow_up: "What layer of the stack is hardest to abstract, and when does the abstraction cost more than it saves?"
+
+  - id: sd010
+    text: "Design a developer productivity platform — CI/CD, environments, observability tooling — for an organisation of 200 engineers across 15 teams."
+    tags: [developer_experience, platform_engineering, scaling]
+    difficulty: staff
+    follow_up: "How do you balance standardisation with the autonomy teams need to move fast in their domain?"

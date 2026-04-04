@@ -1,0 +1,86 @@
+questions:
+  # --- entry ---
+
+  - id: hr001
+    text: "Where do you see yourself professionally in three years and how does this role fit that path?"
+    tags: [career_growth, self_awareness]
+    difficulty: entry
+    follow_up: "What would tell you after six months that this was the right move?"
+
+  - id: hr002
+    text: "How do you handle feedback that you strongly disagree with?"
+    tags: [feedback, resilience, self_awareness]
+    difficulty: entry
+    follow_up: "Describe a specific piece of feedback that changed how you work, even if it was uncomfortable."
+
+  - id: hr003
+    text: "Describe a time you had to collaborate closely with someone whose working style was very different from yours."
+    tags: [collaboration, adaptability]
+    difficulty: entry
+    follow_up: "What did you learn about your own working style from that experience?"
+
+  # --- mid ---
+
+  - id: hr004
+    text: "How do you manage your workload when you have more work than time and every stakeholder says their priority is highest?"
+    tags: [prioritisation, stakeholder_management, time_management]
+    difficulty: mid
+    follow_up: "Tell me about a time you had to push back on a request that felt urgent but wasn't the right priority."
+
+  - id: hr005
+    text: "Describe how you have helped onboard a new team member — what worked, what didn't, and what you would do differently."
+    tags: [onboarding, mentoring, teamwork]
+    difficulty: mid
+    follow_up: "How do you know when onboarding has genuinely succeeded rather than just completed?"
+
+  - id: hr006
+    text: "Tell me about a time you gave difficult feedback to a peer. How did you approach it and what happened?"
+    tags: [feedback, communication, courage]
+    difficulty: mid
+    follow_up: "What would you do differently if the relationship had been more strained to begin with?"
+
+  - id: hr007
+    text: "How do you build trust with stakeholders who are sceptical of your team's ability to deliver?"
+    tags: [stakeholder_management, trust, communication]
+    difficulty: mid
+    follow_up: "Describe a situation where you won over a sceptical stakeholder. What specifically turned it around?"
+
+  # --- senior ---
+
+  - id: hr008
+    text: "How have you contributed to or redesigned a hiring process to consistently attract and assess strong candidates?"
+    tags: [hiring, process_design]
+    difficulty: senior
+    follow_up: "What's the biggest mistake you've seen in technical or domain-specific hiring, and how did you fix it?"
+
+  - id: hr009
+    text: "Describe how you create psychological safety on your team — specifically in situations where raising problems carries perceived risk."
+    tags: [psychological_safety, leadership, culture]
+    difficulty: senior
+    follow_up: "Tell me about a time psychological safety broke down. What caused it and how did you recover it?"
+
+  - id: hr010
+    text: "How do you develop high-performing team members who have no interest in moving into management?"
+    tags: [career_development, mentoring, retention]
+    difficulty: senior
+    follow_up: "What signals tell you someone is being stretched appropriately versus being under-challenged?"
+
+  - id: hr011
+    text: "Describe a time you had to manage a team through significant organisational uncertainty — a reorg, layoffs, or a major strategy shift."
+    tags: [change_management, leadership, resilience]
+    difficulty: senior
+    follow_up: "How did you balance transparency with the team against information you weren't yet able to share?"
+
+  # --- staff ---
+
+  - id: hr012
+    text: "How have you driven a meaningful culture change across an organisation — not just within your immediate team?"
+    tags: [culture, influence, strategy]
+    difficulty: staff
+    follow_up: "How did you measure whether the change actually stuck?"
+
+  - id: hr013
+    text: "Describe how you align multiple teams around a strategy they were initially resistant to or confused by."
+    tags: [alignment, strategy, communication]
+    difficulty: staff
+    follow_up: "What's the difference between alignment you've genuinely achieved and compliance you've mistaken for alignment?"

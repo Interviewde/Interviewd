@@ -1,0 +1,86 @@
+questions:
+  # --- entry ---
+
+  - id: t001
+    text: "Walk me through how you debug an issue in a system you've never seen before."
+    tags: [debugging, problem_solving]
+    difficulty: entry
+    follow_up: "What's the first signal you look for when you have no prior context?"
+
+  - id: t002
+    text: "How do you decide whether a bug is severe enough to block a release?"
+    tags: [quality, judgement]
+    difficulty: entry
+    follow_up: "Describe a time you pushed back on shipping something you felt wasn't ready."
+
+  - id: t003
+    text: "How do you stay current with fast-moving technology in your domain?"
+    tags: [learning, self_development]
+    difficulty: entry
+    follow_up: "What was the last thing you learned that changed how you approach your work?"
+
+  # --- mid ---
+
+  - id: t004
+    text: "Describe your approach to code review — what do you look for as both author and reviewer?"
+    tags: [code_quality, collaboration]
+    difficulty: mid
+    follow_up: "Tell me about a review where you had a real disagreement. How did it resolve?"
+
+  - id: t005
+    text: "How do you evaluate a third-party library or external tool before adopting it in production?"
+    tags: [decision_making, risk, tooling]
+    difficulty: mid
+    follow_up: "Walk me through a tool adoption that went well and one that didn't."
+
+  - id: t006
+    text: "Walk me through how you investigated and resolved a performance problem in a production system."
+    tags: [performance, debugging, production]
+    difficulty: mid
+    follow_up: "How did you verify the fix didn't introduce a regression elsewhere?"
+
+  - id: t007
+    text: "How do you approach writing tests — what makes a test suite valuable vs. a burden?"
+    tags: [testing, quality]
+    difficulty: mid
+    follow_up: "Describe the worst test suite you inherited and how you improved it."
+
+  # --- senior ---
+
+  - id: t008
+    text: "Describe a significant architectural trade-off you made. What did you weigh and what did you give up?"
+    tags: [architecture, trade_offs, decision_making]
+    difficulty: senior
+    follow_up: "Looking back, would you make the same call today? Why or why not?"
+
+  - id: t009
+    text: "How do you approach security in your day-to-day engineering work beyond the obvious checklist items?"
+    tags: [security, engineering_culture]
+    difficulty: senior
+    follow_up: "Tell me about a vulnerability or risk you identified that others had missed."
+
+  - id: t010
+    text: "How do you keep technical debt visible and actionable on a team moving fast?"
+    tags: [technical_debt, engineering_culture, prioritisation]
+    difficulty: senior
+    follow_up: "Describe a time you successfully got non-technical stakeholders to prioritise debt paydown."
+
+  - id: t011
+    text: "How do you mentor engineers who are technically strong but struggle to communicate or influence across teams?"
+    tags: [mentoring, communication, growth]
+    difficulty: senior
+    follow_up: "What signals tell you that coaching is working?"
+
+  # --- staff ---
+
+  - id: t012
+    text: "How do you set and enforce engineering standards across multiple teams without becoming a bottleneck?"
+    tags: [standards, scaling, influence]
+    difficulty: staff
+    follow_up: "How do you handle a team that consistently ignores the standards everyone else has adopted?"
+
+  - id: t013
+    text: "Describe how you have driven adoption of a new practice or technology across an organisation that was resistant to change."
+    tags: [change_management, influence, strategy]
+    difficulty: staff
+    follow_up: "What would you do differently if you were starting that effort today?"

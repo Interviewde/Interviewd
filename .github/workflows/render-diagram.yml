@@ -17,16 +17,20 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 20
 
       - name: Install Mermaid CLI
-        run: npm install -g @mermaid-js/mermaid-cli
+        # Pinned to an exact version to prevent silent SVG output changes and
+        # supply chain risk (this workflow has contents: write).
+        # To upgrade: update the version here and verify the rendered SVG looks correct.
+        # Latest version: https://www.npmjs.com/package/@mermaid-js/mermaid-cli
+        run: npm install -g @mermaid-js/mermaid-cli@11.12.0
 
       - name: Create Puppeteer config
         run: echo '{"args":["--no-sandbox"]}' > /tmp/puppeteer-config.json

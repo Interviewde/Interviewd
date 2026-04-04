@@ -1206,6 +1206,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -1230,6 +1231,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.111" },
     { name = "google-generativeai", specifier = ">=0.8" },
     { name = "groq", specifier = ">=0.11" },
+    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "instructor", specifier = ">=1.4" },
     { name = "jinja2", marker = "extra == 'web'", specifier = ">=3.1" },
     { name = "langgraph", specifier = ">=0.2" },

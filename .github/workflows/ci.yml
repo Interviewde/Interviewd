@@ -7,7 +7,10 @@ on:
   pull_request:
 
 jobs:
-  test:
+  # ---------------------------------------------------------------------------
+  # Python — unit + integration + web API tests
+  # ---------------------------------------------------------------------------
+  test-python:
     name: pytest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
 
@@ -33,7 +36,40 @@ jobs:
         # --frozen fails CI if uv.lock is out of sync with pyproject.toml.
         # If you change pyproject.toml, run `uv lock` locally and commit the
         # updated uv.lock in the same PR.
-        run: uv sync --extra dev --frozen
+        run: uv sync --extra dev --extra web --frozen
 
       - name: Run tests
         run: uv run pytest tests/ -v --tb=short
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Vitest component tests
+  # ---------------------------------------------------------------------------
+  test-frontend:
+    name: vitest (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ["20", "22"]
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Type-check
+        working-directory: frontend
+        run: npx tsc --noEmit

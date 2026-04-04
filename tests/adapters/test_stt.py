@@ -58,7 +58,7 @@ async def test_whisper_local_transcribe():
 
     # Only mock run_in_executor — this prevents the real (blocking) whisper model
     # from loading while letting real tempfile creation/deletion run normally.
-    with patch("interviewd.adapters.stt.whisper_local.asyncio.get_event_loop") as mock_loop:
+    with patch("interviewd.adapters.stt.whisper_local.asyncio.get_running_loop") as mock_loop:
         mock_loop.return_value.run_in_executor = AsyncMock(return_value={"text": "  Hello world.  "})
         result = await adapter.transcribe(b"fake-audio-bytes")
 

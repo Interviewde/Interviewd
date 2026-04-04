@@ -74,9 +74,6 @@ class Settings(BaseSettings):
     interview: InterviewConfig = InterviewConfig()
     paths: PathsConfig = PathsConfig()
 
-    groq_api_key: str = ""
-    gemini_api_key: str = ""
-
     log_level: str = "INFO"
 
 

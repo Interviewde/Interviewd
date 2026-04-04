@@ -111,7 +111,7 @@ class VoiceLoop:
         trailing_silence = 0
         speech_detected = False
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         with sd.InputStream(
             samplerate=self._sample_rate, channels=1, dtype="int16"

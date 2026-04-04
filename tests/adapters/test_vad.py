@@ -27,7 +27,7 @@ async def test_silero_is_speech_true_above_threshold():
     """is_speech() should return True when executor returns True."""
     config = VADConfig(provider="silero", threshold=0.5)
 
-    with patch("interviewd.adapters.vad.silero.asyncio.get_event_loop") as mock_get_loop:
+    with patch("interviewd.adapters.vad.silero.asyncio.get_running_loop") as mock_get_loop:
         mock_loop = MagicMock()
         mock_loop.run_in_executor = AsyncMock(return_value=True)
         mock_get_loop.return_value = mock_loop
@@ -43,7 +43,7 @@ async def test_silero_is_speech_false_below_threshold():
     """is_speech() should return False when executor returns False."""
     config = VADConfig(provider="silero", threshold=0.5)
 
-    with patch("interviewd.adapters.vad.silero.asyncio.get_event_loop") as mock_get_loop:
+    with patch("interviewd.adapters.vad.silero.asyncio.get_running_loop") as mock_get_loop:
         mock_loop = MagicMock()
         mock_loop.run_in_executor = AsyncMock(return_value=False)
         mock_get_loop.return_value = mock_loop

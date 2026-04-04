@@ -61,7 +61,7 @@ class PiperTTSAdapter(TTSAdapter, provider="piper"):
                 self.voice.synthesize(text, wav_file)
             return buf.getvalue()
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _run)
 
     async def speak(self, text: str) -> None:

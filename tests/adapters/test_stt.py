@@ -54,17 +54,12 @@ async def test_groq_transcribe():
 async def test_whisper_local_transcribe():
     """Whisper local adapter should call whisper.transcribe and return stripped text."""
     config = STTConfig(provider="whisper_local", model="base")
+    adapter = get_stt_adapter(config)
 
+    # Only mock run_in_executor — this prevents the real (blocking) whisper model
+    # from loading while letting real tempfile creation/deletion run normally.
     with patch("interviewd.adapters.stt.whisper_local.asyncio.get_event_loop") as mock_loop:
-        mock_loop.return_value.run_in_executor = AsyncMock(
-            return_value={"text": "  Hello world.  "}
-        )
-        with patch("builtins.open", MagicMock()):
-            with patch("interviewd.adapters.stt.whisper_local.tempfile.NamedTemporaryFile") as mock_tmp:
-                mock_tmp.return_value.__enter__ = MagicMock(return_value=MagicMock(name="f"))
-                mock_tmp.return_value.__exit__ = MagicMock(return_value=False)
-                with patch("interviewd.adapters.stt.whisper_local.Path.unlink"):
-                    adapter = get_stt_adapter(config)
-                    result = await adapter.transcribe(b"fake-audio-bytes")
+        mock_loop.return_value.run_in_executor = AsyncMock(return_value={"text": "  Hello world.  "})
+        result = await adapter.transcribe(b"fake-audio-bytes")
 
     assert result == "Hello world."

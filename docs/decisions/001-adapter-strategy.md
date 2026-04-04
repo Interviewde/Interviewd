@@ -94,3 +94,15 @@ with no API key needed.
 - LLM provider coverage is effectively unlimited via LiteLLM without any adapter code.
 - `litellm` is added as a dependency in `pyproject.toml`.
 - STT/TTS provider fields use `Literal` for early validation; LLM provider uses `str`.
+
+### Note: InterviewConfig is intentionally not an adapter
+
+`InterviewConfig` fields (`type`, `difficulty`, `persona`) also use `Literal` but for a
+different reason — they are not plugin points. Adding a new interview type (e.g.
+`"case_study"`) requires coordinated changes across the question bank, scoring logic,
+and engine prompts. The `Literal` makes that coupling explicit: a contributor cannot
+add `"case_study"` to the config without the compiler/validator forcing them to
+acknowledge the other required changes.
+
+This is distinct from STT/TTS where a new provider is self-contained in one adapter
+file. Do not apply the adapter pattern to `InterviewConfig`.

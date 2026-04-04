@@ -21,6 +21,11 @@ interview:
   time_limit_per_question: 120  # seconds
   persona: neutral        # friendly | neutral | adversarial
   language: en
+  mode: pipeline          # pipeline | live  (see docs/decisions/005-dual-path-interview-engine.md)
+
+live_llm:
+  provider: gemini_live   # placeholder — not yet implemented
+  model: ""
 
 paths:
   question_bank: config/questions

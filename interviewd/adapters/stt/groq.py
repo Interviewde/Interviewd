@@ -24,11 +24,13 @@ class GroqSTTAdapter(STTAdapter, provider="groq"):
         # AsyncGroq reads GROQ_API_KEY from the environment automatically
         self.client = AsyncGroq()
 
-    async def transcribe(self, audio: bytes) -> str:
+    async def transcribe(self, audio: bytes, *, filename: str = "audio.wav") -> str:
         """Transcribe audio bytes using Groq Whisper.
 
         Args:
-            audio: Raw audio bytes in WAV format.
+            audio: Raw audio bytes (WAV from CLI pipeline, WebM from browser).
+            filename: File extension tells Groq which codec to expect.
+                Groq supports: wav, webm, mp3, mp4, ogg, flac, m4a.
 
         Returns:
             Transcribed text string.
@@ -36,7 +38,7 @@ class GroqSTTAdapter(STTAdapter, provider="groq"):
         # Groq SDK requires a file-like object with a .name attribute
         # so it can infer the audio format from the extension
         audio_file = io.BytesIO(audio)
-        audio_file.name = "audio.wav"
+        audio_file.name = filename
 
         transcription = await self.client.audio.transcriptions.create(
             file=audio_file,

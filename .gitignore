@@ -211,3 +211,8 @@ __marimo__/
 
 # Local dev scripts (live mic tests, one-off experiments — not for CI)
 local/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+interviewd/web/static/dist/

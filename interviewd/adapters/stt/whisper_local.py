@@ -39,19 +39,25 @@ class WhisperLocalSTTAdapter(STTAdapter, provider="whisper_local"):
             self._model = whisper.load_model(self.config.model or "base")
         return self._model
 
-    async def transcribe(self, audio: bytes) -> str:
+    async def transcribe(self, audio: bytes, *, filename: str = "audio.wav") -> str:
         """Transcribe audio bytes using local Whisper model.
 
         Whisper's Python API is synchronous, so we run it in a thread
         to avoid blocking the async event loop.
 
         Args:
-            audio: Raw audio bytes in WAV format.
+            audio: Raw audio bytes. Whisper uses ffmpeg internally, so any
+                format ffmpeg supports (wav, webm, mp3, etc.) works as long
+                as the filename suffix matches the actual format.
+            filename: Used to derive the temp file suffix so ffmpeg picks the
+                right decoder (e.g. "audio.webm" for browser recordings).
 
         Returns:
             Transcribed text string.
         """
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        from pathlib import PurePosixPath
+        suffix = PurePosixPath(filename).suffix or ".wav"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
             f.write(audio)
             tmp_path = f.name
 

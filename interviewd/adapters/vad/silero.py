@@ -63,5 +63,5 @@ class SileroVADAdapter(VADAdapter, provider="silero"):
                     return True
             return False
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _run)

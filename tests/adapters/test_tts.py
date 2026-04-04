@@ -59,7 +59,7 @@ async def test_piper_synthesize():
     fake_wav = b"RIFF\x00\x00\x00\x00WAVEfmt "
 
     with patch(
-        "interviewd.adapters.tts.piper.asyncio.get_event_loop"
+        "interviewd.adapters.tts.piper.asyncio.get_running_loop"
     ) as mock_get_loop:
         mock_loop = MagicMock()
         mock_loop.run_in_executor = AsyncMock(return_value=fake_wav)

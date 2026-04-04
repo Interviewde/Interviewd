@@ -37,11 +37,14 @@ class STTAdapter(ABC):
             STTAdapter._registry[provider] = cls
 
     @abstractmethod
-    async def transcribe(self, audio: bytes) -> str:
+    async def transcribe(self, audio: bytes, *, filename: str = "audio.wav") -> str:
         """Convert raw audio bytes to a text transcript.
 
         Args:
-            audio: Raw PCM audio bytes in WAV format captured from the microphone.
+            audio: Raw audio bytes captured from the microphone.
+            filename: Hint for the audio format, inferred from the file extension
+                (e.g. "audio.wav", "audio.webm"). Defaults to WAV for CLI/pipeline
+                use; pass "audio.webm" when receiving browser MediaRecorder output.
 
         Returns:
             The transcribed text string.

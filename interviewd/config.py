@@ -52,6 +52,17 @@ class InterviewConfig(BaseModel):
     time_limit_per_question: int = 120  # seconds
     persona: Literal["friendly", "neutral", "adversarial"] = "neutral"
     language: str = "en"
+    # pipeline = existing VAD→STT→LLM→TTS chain (free/local capable)
+    # live     = single real-time voice LLM API (lower latency, higher cost)
+    # See docs/decisions/005-dual-path-interview-engine.md
+    mode: Literal["pipeline", "live"] = "pipeline"
+
+
+class LiveLLMConfig(BaseModel):
+    # Placeholder — live LLM adapter is implemented in a future sprint.
+    # See docs/decisions/005-dual-path-interview-engine.md
+    provider: str = "gemini_live"
+    model: str = ""
 
 
 class PathsConfig(BaseModel):
@@ -71,6 +82,7 @@ class Settings(BaseSettings):
     tts: TTSConfig = TTSConfig()
     vad: VADConfig = VADConfig()
     llm: LLMConfig = LLMConfig()
+    live_llm: LiveLLMConfig = LiveLLMConfig()
     interview: InterviewConfig = InterviewConfig()
     paths: PathsConfig = PathsConfig()
 

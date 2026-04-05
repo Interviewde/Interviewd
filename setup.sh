@@ -67,12 +67,33 @@ fi
 step "[2/5] Python 3.11+"
 
 _py_ok() {
-    command -v python3 &>/dev/null || return 1
-    python3 -c "import sys; exit(0 if sys.version_info >= (3,11) else 1)" 2>/dev/null
+    # Try python3 then python — handles macOS/Linux ('python3') and Windows Git
+    # Bash ('python').  The Windows App Execution Alias for python3 exists in
+    # PATH but errors at runtime, so we test both existence AND executability.
+    local py
+    for py in python3 python; do
+        if command -v "$py" &>/dev/null \
+           && "$py" -c "import sys; exit(0 if sys.version_info >= (3,11) else 1)" 2>/dev/null; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+_py_cmd() {
+    # Return whichever python command actually works on this system
+    local py
+    for py in python3 python; do
+        if command -v "$py" &>/dev/null \
+           && "$py" -c "import sys; exit(0 if sys.version_info >= (3,11) else 1)" 2>/dev/null; then
+            echo "$py"; return
+        fi
+    done
+    echo python  # fallback
 }
 
 if _py_ok; then
-    ok "Python $(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")"
+    ok "Python $($(_py_cmd) -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")"
 else
     fail "Python 3.11+ not found"
     info "uv can install and manage Python versions for you"
@@ -139,8 +160,8 @@ fi
 
 # ── Step 4: Python deps ───────────────────────────────────────────
 step "[4/5] Python dependencies"
-info "uv sync --extra web"
-uv sync --extra web
+info "uv sync --extra web --extra planner --extra dev"
+uv sync --extra web --extra planner --extra dev
 ok "Python deps ready"
 
 # ── Step 5: Frontend deps ─────────────────────────────────────────
@@ -160,5 +181,5 @@ if [[ "${CI:-}" == "true" ]]; then
     ok "CI environment — skipping interactive key setup"
     ok "All done. Run 'uv run interviewd setup' to configure API keys."
 else
-    uv run interviewd setup
+    PYTHONIOENCODING=utf-8 uv run interviewd setup
 fi

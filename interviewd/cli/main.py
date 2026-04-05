@@ -14,10 +14,11 @@ app = typer.Typer(help="Interviewd — voice mock interview agent")
 @app.command()
 def setup(
     force: bool = typer.Option(False, "--force", "-f", help="Re-configure keys that are already set"),
+    start: Optional[bool] = typer.Option(None, "--start/--no-start", help="Start dev server after setup"),
 ) -> None:
-    """Interactively configure API keys and write them to .env."""
+    """Install deps, configure API keys, and optionally start the dev server."""
     from interviewd.cli.setup import run_setup
-    run_setup(force=force)
+    run_setup(force=force, start=start)
 
 
 def _version_callback(value: bool) -> None:

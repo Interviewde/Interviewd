@@ -5,6 +5,59 @@ import typer
 
 app = typer.Typer(help="Interviewd — voice mock interview agent")
 
+_CONFIG_OPTION = typer.Option("config/default.yaml", help="Path to config YAML")
+
+
+# ---------------------------------------------------------------------------
+# plan
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def plan(
+    jd: str = typer.Option(..., "--jd", help="Path to job description (.pdf, .txt, .md)"),
+    resume: str = typer.Option(..., "--resume", help="Path to resume / CV (.pdf, .txt, .md)"),
+    output: str = typer.Option(
+        "local/plans/plan.yaml",
+        "--output", "-o",
+        help="Where to save the generated plan YAML (default: local/plans/plan.yaml)",
+    ),
+    type: str = typer.Option("technical", help="Interview type: behavioral | technical | hr | system_design"),
+    difficulty: str = typer.Option("mid", help="Difficulty: entry | mid | senior | staff"),
+    questions: int = typer.Option(5, help="Number of questions to generate"),
+    config: str = _CONFIG_OPTION,
+) -> None:
+    """Generate a tailored interview plan from a job description and resume.
+
+    The plan is saved to --output (default local/plans/plan.yaml, which is
+    gitignored). Pass it to an interview session with:
+
+      interviewd interview --plan local/plans/plan.yaml
+
+    Standard pre-made plans ship in config/plans/ and need no JD/resume.
+    """
+    from interviewd.cli.plan import run_plan
+
+    _VALID_TYPES = ("behavioral", "technical", "hr", "system_design")
+    _VALID_DIFFICULTIES = ("entry", "mid", "senior", "staff")
+
+    if type not in _VALID_TYPES:
+        typer.echo(f"Invalid type '{type}'. Choose from: {', '.join(_VALID_TYPES)}", err=True)
+        raise typer.Exit(1)
+    if difficulty not in _VALID_DIFFICULTIES:
+        typer.echo(f"Invalid difficulty '{difficulty}'. Choose from: {', '.join(_VALID_DIFFICULTIES)}", err=True)
+        raise typer.Exit(1)
+
+    run_plan(
+        jd=jd,
+        resume=resume,
+        output=output,
+        config_path=config,
+        interview_type=type,
+        difficulty=difficulty,
+        num_questions=questions,
+    )
+
 
 # ---------------------------------------------------------------------------
 # setup
@@ -41,8 +94,6 @@ def main(
 ) -> None:
     pass
 
-_CONFIG_OPTION = typer.Option("config/default.yaml", help="Path to config YAML")
-
 
 # ---------------------------------------------------------------------------
 # interview
@@ -54,9 +105,24 @@ def interview(
     type: str = typer.Option("behavioral", help="Interview type: behavioral | technical | hr | system_design"),
     difficulty: str = typer.Option("mid", help="Difficulty: entry | mid | senior | staff"),
     questions: int = typer.Option(5, help="Number of questions"),
+    plan_path: Optional[str] = typer.Option(
+        None, "--plan",
+        help="Path to a plan YAML (from 'interviewd plan' or config/plans/). "
+             "When provided, overrides --type/--difficulty/--questions and uses the plan's question list.",
+    ),
     config: str = _CONFIG_OPTION,
 ) -> None:
-    """Run a full voice mock interview and save the session."""
+    """Run a full voice mock interview and save the session.
+
+    To run from a pre-made plan (no JD/resume needed):
+
+      interviewd interview --plan config/plans/swe_technical_senior.yaml
+
+    To run from a personalised AI-generated plan:
+
+      interviewd plan --jd job.pdf --resume resume.pdf
+      interviewd interview --plan local/plans/plan.yaml
+    """
     # Defer heavy imports so `--help` stays instant
     from interviewd.config import InterviewConfig, load_settings
     from interviewd.adapters.llm.registry import get_llm_adapter
@@ -72,30 +138,54 @@ def interview(
     _VALID_TYPES = ("behavioral", "technical", "hr", "system_design")
     _VALID_DIFFICULTIES = ("entry", "mid", "senior", "staff")
 
-    if type not in _VALID_TYPES:
-        typer.echo(
-            f"Invalid interview type '{type}'. Choose from: {', '.join(_VALID_TYPES)}",
-            err=True,
-        )
-        raise typer.Exit(1)
-    if difficulty not in _VALID_DIFFICULTIES:
-        typer.echo(
-            f"Invalid difficulty '{difficulty}'. Choose from: {', '.join(_VALID_DIFFICULTIES)}",
-            err=True,
-        )
-        raise typer.Exit(1)
-
     settings = load_settings(config)
 
-    # CLI flags override config-file values
-    interview_config = InterviewConfig(
-        type=type,
-        difficulty=difficulty,
-        num_questions=questions,
-        time_limit_per_question=settings.interview.time_limit_per_question,
-        persona=settings.interview.persona,
-        language=settings.interview.language,
-    )
+    # --plan path: load plan and derive interview config + questions from it
+    if plan_path is not None:
+        from interviewd.planner.models import InterviewPlan
+
+        try:
+            loaded_plan = InterviewPlan.from_yaml(plan_path)
+        except FileNotFoundError:
+            typer.echo(f"Plan file not found: {plan_path}", err=True)
+            raise typer.Exit(1)
+
+        interview_config = InterviewConfig(
+            type=loaded_plan.interview_type,
+            difficulty=loaded_plan.difficulty,
+            num_questions=loaded_plan.num_questions,
+            time_limit_per_question=loaded_plan.time_limit_per_question,
+            persona=loaded_plan.persona,
+            language=loaded_plan.language,
+        )
+        planned_questions = loaded_plan.to_questions()
+        typer.echo(
+            f"Loaded plan: {loaded_plan.interview_type} / {loaded_plan.difficulty} "
+            f"({len(planned_questions)} questions)"
+        )
+    else:
+        if type not in _VALID_TYPES:
+            typer.echo(
+                f"Invalid interview type '{type}'. Choose from: {', '.join(_VALID_TYPES)}",
+                err=True,
+            )
+            raise typer.Exit(1)
+        if difficulty not in _VALID_DIFFICULTIES:
+            typer.echo(
+                f"Invalid difficulty '{difficulty}'. Choose from: {', '.join(_VALID_DIFFICULTIES)}",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+        interview_config = InterviewConfig(
+            type=type,
+            difficulty=difficulty,
+            num_questions=questions,
+            time_limit_per_question=settings.interview.time_limit_per_question,
+            persona=settings.interview.persona,
+            language=settings.interview.language,
+        )
+        planned_questions = None
 
     async def _run() -> None:
         vad = get_vad_adapter(settings.vad)
@@ -103,16 +193,23 @@ def interview(
         tts = get_tts_adapter(settings.tts)
         llm = get_llm_adapter(settings.llm)
 
-        bank = QuestionBank(settings.paths.question_bank)
-        picked = bank.pick(interview_config)
-        if not picked:
-            typer.echo(
-                f"No questions found for type='{type}' difficulty='{difficulty}'.",
-                err=True,
-            )
-            raise typer.Exit(1)
+        if planned_questions is not None:
+            picked = planned_questions
+        else:
+            bank = QuestionBank(settings.paths.question_bank)
+            picked = bank.pick(interview_config)
+            if not picked:
+                typer.echo(
+                    f"No questions found for type='{interview_config.type}' "
+                    f"difficulty='{interview_config.difficulty}'.",
+                    err=True,
+                )
+                raise typer.Exit(1)
 
-        typer.echo(f"Starting {difficulty} {type} interview ({len(picked)} questions)…")
+        typer.echo(
+            f"Starting {interview_config.difficulty} {interview_config.type} "
+            f"interview ({len(picked)} questions)…"
+        )
 
         voice_loop = VoiceLoop(vad, stt, tts)
         engine = InterviewEngine(voice_loop, llm, interview_config, picked)

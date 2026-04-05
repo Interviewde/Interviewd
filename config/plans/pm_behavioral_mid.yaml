@@ -1,0 +1,83 @@
+# Standard plan: Mid-level Product Manager — Behavioral Interview
+# Pre-made plan; no JD or resume needed.
+#
+# Run with:
+#   interviewd interview --plan config/plans/pm_behavioral_mid.yaml
+
+generated_at: "2026-04-05T00:00:00+00:00"
+jd_source: ""
+resume_source: ""
+interview_type: behavioral
+difficulty: mid
+num_questions: 5
+time_limit_per_question: 120
+persona: neutral
+language: en
+
+skills_analysis:
+  required_skills:
+    - Prioritisation under constraints
+    - Cross-functional collaboration
+    - Data-driven decision making
+    - Stakeholder communication
+    - Product sense and user empathy
+  skill_gaps: []
+  summary: >
+    Standard mid-level PM behavioral plan covering the five core competencies
+    most commonly assessed in PM loops at top-tier tech companies.
+
+questions:
+  - id: pm_b_001
+    text: >
+      Tell me about a time you had to prioritise between two features that were
+      both considered high priority by different stakeholders.
+    tags: [prioritisation, stakeholder_management]
+    difficulty: mid
+    follow_up: >
+      If the stakeholder whose feature was deprioritised pushed back hard,
+      how did you handle that conversation?
+    rationale: Prioritisation is the core PM skill; tests both framework and interpersonal ability.
+
+  - id: pm_b_002
+    text: >
+      Describe a product decision you made using data that turned out to be wrong.
+      What happened and what did you learn?
+    tags: [data_driven, learning, decision_making]
+    difficulty: mid
+    follow_up: >
+      How did you communicate the miss to your team and leadership, and what
+      process changes did you introduce afterward?
+    rationale: Assesses intellectual honesty, learning mindset, and data interpretation depth.
+
+  - id: pm_b_003
+    text: >
+      Give me an example of a time you had to get engineering buy-in for a product
+      direction they were initially skeptical of.
+    tags: [cross_functional, influence, communication]
+    difficulty: mid
+    follow_up: >
+      What would you have done differently if the engineers had remained
+      unconvinced after your initial attempt?
+    rationale: PM influence without authority is a core competency at mid-level and above.
+
+  - id: pm_b_004
+    text: >
+      Tell me about a feature you shipped that you're most proud of. Walk me
+      through the problem, your approach, and the outcome.
+    tags: [product_sense, execution, impact]
+    difficulty: mid
+    follow_up: >
+      Looking back, what is the one thing you would have done differently in
+      discovery, design, or delivery?
+    rationale: Reveals product sense, ownership, and self-awareness simultaneously.
+
+  - id: pm_b_005
+    text: >
+      Describe a time when user research or customer feedback changed your
+      understanding of a problem you were working on.
+    tags: [user_empathy, discovery, product_sense]
+    difficulty: mid
+    follow_up: >
+      How do you decide how much weight to give user feedback versus
+      quantitative data when they point in different directions?
+    rationale: Tests user empathy and ability to synthesise qualitative and quantitative signals.

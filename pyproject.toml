@@ -28,6 +28,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+planner = [
+    "pypdf>=4.0",
+]
 piper = [
     "piper-tts>=1.2",
 ]

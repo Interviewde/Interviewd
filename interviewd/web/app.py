@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from interviewd.web.api import interview, sessions
+from interviewd.web.api import interview, plans, sessions
 
 
 @asynccontextmanager
@@ -57,6 +57,7 @@ app.add_middleware(
 )
 
 app.include_router(interview.router)
+app.include_router(plans.router)
 app.include_router(sessions.router)
 
 

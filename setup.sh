@@ -22,6 +22,8 @@ info() { echo -e "     $*"; }
 warn() { echo -e "  ${YELLOW}!${NC}  $*"; }
 step() { echo; echo -e "${BOLD}$*${NC}"; printf '%.0s─' {1..52}; echo; }
 ask()  {
+    # Auto-confirm in CI (GitHub Actions sets CI=true)
+    [[ "${CI:-}" == "true" ]] && return 0
     local ans
     read -r -p "     $1 [Y/n] " ans
     [[ -z "$ans" || "$ans" =~ ^[Yy] ]]
@@ -154,4 +156,10 @@ echo "════════════════════════�
 ok "System setup complete"
 echo "══════════════════════════════════════════════════════"
 
-uv run interviewd setup
+# Skip interactive key wizard in CI — no real API keys available
+if [[ "${CI:-}" == "true" ]]; then
+    ok "CI environment — skipping interactive key setup"
+    ok "All done. Run 'uv run interviewd setup' to configure API keys."
+else
+    uv run interviewd setup
+fi

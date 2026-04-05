@@ -1,0 +1,104 @@
+name: Setup Scripts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - setup.sh
+      - setup.ps1
+      - pyproject.toml
+      - uv.lock
+      - frontend/package.json
+      - frontend/package-lock.json
+  pull_request:
+    paths:
+      - setup.sh
+      - setup.ps1
+      - pyproject.toml
+      - uv.lock
+      - frontend/package.json
+      - frontend/package-lock.json
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # setup.sh — macOS and Linux
+  # ---------------------------------------------------------------------------
+  test-setup-sh:
+    name: setup.sh (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install system dependencies (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y libportaudio2
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Run setup.sh
+        # CI=true is set automatically by GitHub Actions.
+        # The script auto-confirms all prompts and skips the interactive key wizard.
+        run: bash setup.sh
+
+      - name: Verify — uv
+        run: uv --version
+
+      - name: Verify — Python deps (import interviewd + web extras)
+        run: uv run python -c "import interviewd; import fastapi; print('deps ok')"
+
+      - name: Verify — CLI works
+        run: uv run interviewd --help
+
+      - name: Verify — frontend node_modules
+        run: test -d frontend/node_modules
+
+  # ---------------------------------------------------------------------------
+  # setup.ps1 — Windows (native PowerShell)
+  # ---------------------------------------------------------------------------
+  test-setup-ps1:
+    name: setup.ps1 (windows-latest)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: npm-windows-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Run setup.ps1
+        # CI=true is set automatically by GitHub Actions.
+        # ExecutionPolicy bypass scoped to this process only.
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          .\setup.ps1
+
+      - name: Verify — uv
+        shell: pwsh
+        run: uv --version
+
+      - name: Verify — Python deps (import interviewd + web extras)
+        shell: pwsh
+        run: uv run python -c "import interviewd; import fastapi; print('deps ok')"
+
+      - name: Verify — CLI works
+        shell: pwsh
+        run: uv run interviewd --help
+
+      - name: Verify — frontend node_modules
+        shell: pwsh
+        run: Test-Path frontend/node_modules -PathType Container

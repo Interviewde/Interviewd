@@ -23,6 +23,8 @@ function Write-Step($msg) {
 }
 
 function Confirm-Step($prompt) {
+    # Auto-confirm in CI (GitHub Actions sets CI=true)
+    if ($env:CI -eq "true") { return $true }
     $ans = Read-Host "     $prompt [Y/n]"
     return ($ans -eq "" -or $ans -match "^[Yy]")
 }
@@ -151,4 +153,10 @@ Write-Ok "System setup complete"
 Write-Host "══════════════════════════════════════════════════════"
 Write-Host ""
 
-uv run interviewd setup
+# Skip interactive key wizard in CI — no real API keys available
+if ($env:CI -eq "true") {
+    Write-Ok "CI environment — skipping interactive key setup"
+    Write-Ok "All done. Run 'uv run interviewd setup' to configure API keys."
+} else {
+    uv run interviewd setup
+}

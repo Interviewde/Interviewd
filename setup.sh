@@ -4,6 +4,9 @@
 #  Run this once after cloning: bash setup.sh
 #
 #  Works on macOS, Linux, and Windows (Git Bash / WSL)
+#  Windows (native PowerShell)? Run setup.ps1 instead:
+#      Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; .\setup.ps1
+#
 #  Installs: uv → Python 3.11 → Node.js → Python deps → frontend deps
 #  Then hands off to `interviewd setup` for API key configuration.
 # ══════════════════════════════════════════════════════════════════

@@ -5,7 +5,16 @@ root instead — it installs uv, Python, Node.js, and all dependencies before
 calling this wizard.
 """
 import os
+import sys
 from pathlib import Path
+
+# Ensure box-drawing / emoji characters render correctly on Windows terminals
+# that default to cp1252.  No-op on macOS/Linux where utf-8 is the default.
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except Exception:
+        pass
 
 import typer
 from dotenv import dotenv_values, set_key

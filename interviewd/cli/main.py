@@ -16,7 +16,7 @@ def setup(
     force: bool = typer.Option(False, "--force", "-f", help="Re-configure keys that are already set"),
     start: Optional[bool] = typer.Option(None, "--start/--no-start", help="Start dev server after setup"),
 ) -> None:
-    """Install deps, configure API keys, and optionally start the dev server."""
+    """Configure API keys and optionally start the dev server. For a fresh clone, run bash setup.sh instead."""
     from interviewd.cli.setup import run_setup
     run_setup(force=force, start=start)
 

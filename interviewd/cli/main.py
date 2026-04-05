@@ -6,6 +6,20 @@ import typer
 app = typer.Typer(help="Interviewd — voice mock interview agent")
 
 
+# ---------------------------------------------------------------------------
+# setup
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def setup(
+    force: bool = typer.Option(False, "--force", "-f", help="Re-configure keys that are already set"),
+) -> None:
+    """Interactively configure API keys and write them to .env."""
+    from interviewd.cli.setup import run_setup
+    run_setup(force=force)
+
+
 def _version_callback(value: bool) -> None:
     if value:
         from importlib.metadata import version, PackageNotFoundError

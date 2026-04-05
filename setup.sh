@@ -46,12 +46,11 @@ else
     fail "uv not found"
     info "Official installer: https://docs.astral.sh/uv/"
     if ask "Install uv now?"; then
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        # Load uv into current shell
+        # Installer may exit non-zero to signal "restart your shell" — ignore that,
+        # check the binary directly instead.
+        curl -LsSf https://astral.sh/uv/install.sh | sh || true
         export PATH="$HOME/.local/bin:$PATH"
-        # shellcheck source=/dev/null
-        source "$HOME/.local/bin/env" 2>/dev/null || true
-        if command -v uv &>/dev/null; then
+        if [[ -x "$HOME/.local/bin/uv" ]] || command -v uv &>/dev/null; then
             ok "uv installed"
         else
             fail "uv installed but not in PATH yet"

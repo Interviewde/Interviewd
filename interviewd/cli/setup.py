@@ -70,6 +70,41 @@ def _run(cmd: list[str], cwd: Path | None = None) -> bool:
     return result.returncode == 0
 
 
+def _install_uv() -> bool:
+    """Run the official uv installer. Returns True if the install command succeeded."""
+    if sys.platform == "win32":
+        cmd = ["powershell", "-ExecutionPolicy", "ByPass", "-c", "irm https://astral.sh/uv/install.ps1 | iex"]
+        cmd_display = 'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"'
+    else:
+        cmd = ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"]
+        cmd_display = "curl -LsSf https://astral.sh/uv/install.sh | sh"
+
+    _info(f"Will run: {cmd_display}")
+    if not typer.confirm("     Install uv now?", default=True):
+        return False
+    return _run(cmd)
+
+
+def _install_node() -> bool:
+    """Offer a platform-appropriate node install. Returns True if attempted."""
+    if sys.platform == "win32":
+        cmd = ["winget", "install", "--id", "OpenJS.NodeJS.LTS", "-e"]
+        cmd_display = "winget install --id OpenJS.NodeJS.LTS -e"
+    elif sys.platform == "darwin":
+        cmd = ["brew", "install", "node"]
+        cmd_display = "brew install node"
+    else:
+        _info("Install Node.js via your package manager, e.g.:")
+        _info("  sudo apt install nodejs npm   # Debian/Ubuntu")
+        _info("  sudo dnf install nodejs       # Fedora")
+        return False
+
+    _info(f"Will run: {cmd_display}")
+    if not typer.confirm("     Install Node.js now?", default=True):
+        return False
+    return _run(cmd)
+
+
 # ---------------------------------------------------------------------------
 # Steps
 # ---------------------------------------------------------------------------
@@ -79,34 +114,42 @@ def _step_prereqs() -> bool:
     typer.echo("\n  [1/4] Checking prerequisites")
     _hr()
     ok = True
+    need_restart = False
 
     # Python version
     major, minor = sys.version_info.major, sys.version_info.minor
     if (major, minor) >= (3, 11):
         _ok(f"Python {major}.{minor}")
     else:
-        _fail(f"Python {major}.{minor} — need 3.11+")
-        ok = False
+        _fail(f"Python {major}.{minor} — need 3.11+  →  https://python.org/downloads")
+        ok = False  # can't auto-install the interpreter we're already inside
 
     # uv
     if shutil.which("uv"):
         _ok("uv")
     else:
-        _fail("uv not found — install from https://docs.astral.sh/uv/")
-        ok = False
+        _fail("uv not found")
+        if _install_uv():
+            _ok("uv installed — you may need to restart your terminal for PATH to update")
+            need_restart = True
+        else:
+            ok = False
 
-    # node + npm
-    if shutil.which("node"):
-        _ok("node")
+    # node + npm (treated as one unit)
+    if shutil.which("node") and shutil.which("npm"):
+        _ok("node + npm")
     else:
-        _fail("node not found — install from https://nodejs.org")
-        ok = False
+        _fail("node / npm not found")
+        if _install_node():
+            _ok("Node.js installed — you may need to restart your terminal for PATH to update")
+            need_restart = True
+        else:
+            ok = False
 
-    if shutil.which("npm"):
-        _ok("npm")
-    else:
-        _fail("npm not found — install from https://nodejs.org")
-        ok = False
+    if need_restart:
+        typer.echo()
+        _info("Restart your terminal, then re-run 'interviewd setup' to continue.")
+        raise typer.Exit(0)
 
     return ok
 

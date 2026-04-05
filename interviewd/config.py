@@ -76,6 +76,7 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     stt: STTConfig = STTConfig()

@@ -74,21 +74,6 @@ def setup(
     run_setup(force=force, start=start)
 
 
-# ---------------------------------------------------------------------------
-# setup
-# ---------------------------------------------------------------------------
-
-
-@app.command()
-def setup(
-    force: bool = typer.Option(False, "--force", "-f", help="Re-configure keys that are already set"),
-    start: Optional[bool] = typer.Option(None, "--start/--no-start", help="Start dev server after setup"),
-) -> None:
-    """Configure API keys and optionally start the dev server. For a fresh clone, run bash setup.sh instead."""
-    from interviewd.cli.setup import run_setup
-    run_setup(force=force, start=start)
-
-
 def _version_callback(value: bool) -> None:
     if value:
         from importlib.metadata import version, PackageNotFoundError

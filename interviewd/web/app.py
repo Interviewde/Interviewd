@@ -23,9 +23,14 @@ async def lifespan(app: FastAPI):
     server starts cleanly and surfaces missing-key errors as HTTP 503s rather than
     a crash at boot time.
     """
+    from dotenv import load_dotenv
     from interviewd.config import load_settings
     from interviewd.data.question_bank import QuestionBank
     from interviewd.store.session_store import SessionStore
+
+    # Load .env into os.environ so third-party clients (Groq, LiteLLM, etc.)
+    # that read directly from the environment can find their API keys.
+    load_dotenv(override=False)
 
     settings = load_settings()
     app.state.settings = settings

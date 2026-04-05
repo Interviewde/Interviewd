@@ -31,6 +31,11 @@ class StartRequest(BaseModel):
     difficulty: str = "mid"
     num_questions: int = 5
     persona: str = "neutral"
+    # Optional: load config + questions from a plan instead of the question bank.
+    # Value is either a standard plan id (e.g. "swe_technical_senior") or a full
+    # plan dict returned by POST /api/plans/generate.
+    plan_id: str | None = None
+    plan_data: dict | None = None
 
 
 class QuestionPayload(BaseModel):
@@ -99,22 +104,53 @@ async def start_interview(body: StartRequest, request: Request) -> dict:
     settings = request.app.state.settings
     bank = request.app.state.bank
 
-    config = InterviewConfig(
-        type=body.type,
-        difficulty=body.difficulty,
-        num_questions=body.num_questions,
-        persona=body.persona,
-        time_limit_per_question=settings.interview.time_limit_per_question,
-        language=settings.interview.language,
-        mode="pipeline",
-    )
+    # --- Plan path ---
+    if body.plan_id is not None or body.plan_data is not None:
+        from pathlib import Path
+        from interviewd.planner.models import InterviewPlan
 
-    questions = bank.pick(config)
-    if not questions:
-        raise HTTPException(
-            400,
-            f"No questions available for type='{body.type}' difficulty='{body.difficulty}'.",
+        if body.plan_data is not None:
+            try:
+                loaded_plan = InterviewPlan.model_validate(body.plan_data)
+            except Exception as exc:
+                raise HTTPException(400, f"Invalid plan data: {exc}")
+        else:
+            plan_path = Path("config/plans") / f"{body.plan_id}.yaml"
+            if not plan_path.exists():
+                raise HTTPException(404, f"Standard plan '{body.plan_id}' not found.")
+            try:
+                loaded_plan = InterviewPlan.from_yaml(str(plan_path))
+            except Exception as exc:
+                raise HTTPException(400, f"Could not load plan: {exc}")
+
+        config = InterviewConfig(
+            type=loaded_plan.interview_type,
+            difficulty=loaded_plan.difficulty,
+            num_questions=loaded_plan.num_questions,
+            persona=loaded_plan.persona,
+            time_limit_per_question=loaded_plan.time_limit_per_question,
+            language=loaded_plan.language,
+            mode="pipeline",
         )
+        questions = loaded_plan.to_questions()
+
+    # --- Manual path ---
+    else:
+        config = InterviewConfig(
+            type=body.type,
+            difficulty=body.difficulty,
+            num_questions=body.num_questions,
+            persona=body.persona,
+            time_limit_per_question=settings.interview.time_limit_per_question,
+            language=settings.interview.language,
+            mode="pipeline",
+        )
+        questions = bank.pick(config)
+        if not questions:
+            raise HTTPException(
+                400,
+                f"No questions available for type='{body.type}' difficulty='{body.difficulty}'.",
+            )
 
     session_id = str(uuid.uuid4())
     st = session_store.WebInterviewState(config=config, questions=questions)

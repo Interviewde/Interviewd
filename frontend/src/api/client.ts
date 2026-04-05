@@ -16,11 +16,53 @@ export interface QuestionPayload {
   is_follow_up: boolean;
 }
 
+export interface PlanMeta {
+  id: string;
+  title: string;
+  interview_type: string;
+  difficulty: string;
+  num_questions: number;
+  summary: string;
+}
+
+export interface SkillGap {
+  skill: string;
+  required_level: "high" | "medium" | "low";
+  resume_level: "strong" | "partial" | "missing";
+}
+
+export interface GeneratedPlan {
+  generated_at: string;
+  jd_source: string;
+  resume_source: string;
+  interview_type: string;
+  difficulty: string;
+  num_questions: number;
+  time_limit_per_question: number;
+  persona: string;
+  language: string;
+  skills_analysis: {
+    required_skills: string[];
+    skill_gaps: SkillGap[];
+    summary: string;
+  };
+  questions: {
+    id: string;
+    text: string;
+    tags: string[];
+    difficulty: string;
+    follow_up: string;
+    rationale: string;
+  }[];
+}
+
 export interface StartRequest {
   type: string;
   difficulty: string;
   num_questions: number;
   persona: string;
+  plan_id?: string;
+  plan_data?: GeneratedPlan;
 }
 
 export interface StartResponse {
@@ -97,6 +139,14 @@ export const api = {
   listSessions: () => request<SessionRow[]>("/api/sessions"),
 
   getSession: (id: string) => request<SessionDetail>(`/api/sessions/${id}`),
+
+  listPlans: () => request<PlanMeta[]>("/api/plans"),
+
+  generatePlan: (formData: FormData) =>
+    request<GeneratedPlan>("/api/plans/generate", {
+      method: "POST",
+      body: formData,
+    }),
 
   startInterview: (body: StartRequest) =>
     request<StartResponse>("/api/interview/start", {

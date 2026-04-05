@@ -28,12 +28,20 @@ export default function Dashboard() {
           Pick an interview type, answer questions with your voice, and get
           instant AI feedback.
         </p>
-        <Link
-          to="/setup"
-          className="mt-6 inline-block bg-white text-brand-700 font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-50 transition-colors"
-        >
-          Start interview →
-        </Link>
+        <div className="mt-6 flex gap-3">
+          <Link
+            to="/setup"
+            className="inline-block bg-white text-brand-700 font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-50 transition-colors"
+          >
+            Start interview →
+          </Link>
+          <Link
+            to="/setup?tab=plan"
+            className="inline-block bg-brand-500 text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-400 transition-colors"
+          >
+            Browse plans →
+          </Link>
+        </div>
       </div>
 
       {/* Stats row */}

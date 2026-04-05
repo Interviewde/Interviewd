@@ -1,0 +1,84 @@
+# Standard plan: Senior Software Engineer — Technical Interview
+# Pre-made plan; no JD or resume needed.
+#
+# Run with:
+#   interviewd interview --plan config/plans/swe_technical_senior.yaml
+
+generated_at: "2026-04-05T00:00:00+00:00"
+jd_source: ""
+resume_source: ""
+interview_type: technical
+difficulty: senior
+num_questions: 5
+time_limit_per_question: 120
+persona: neutral
+language: en
+
+skills_analysis:
+  required_skills:
+    - System design
+    - Data structures and algorithms
+    - Distributed systems
+    - Code quality and testing
+    - Debugging and performance
+  skill_gaps: []
+  summary: >
+    Standard senior SWE technical plan covering system design, algorithms, and
+    engineering craft. No gaps — all areas are probed at senior depth.
+
+questions:
+  - id: swe_t_001
+    text: >
+      Design a URL shortening service (like bit.ly). Walk me through your
+      architecture, data model, and how you'd handle 100 million redirects per day.
+    tags: [system_design, scalability, databases]
+    difficulty: senior
+    follow_up: >
+      How would your design change if you needed to support custom short links
+      with analytics (click counts, geo breakdown) in near-real time?
+    rationale: Tests end-to-end system design thinking at senior scope.
+
+  - id: swe_t_002
+    text: >
+      Given a stream of integers, implement a data structure that returns the
+      median in O(log n) time after each insertion.
+    tags: [algorithms, data_structures, heaps]
+    difficulty: senior
+    follow_up: >
+      How would you extend this to a sliding window of the last k elements
+      instead of all elements seen so far?
+    rationale: Classic DSA problem that differentiates mid from senior candidates.
+
+  - id: swe_t_003
+    text: >
+      You're on-call and a service you own starts returning 5xx errors for 10%
+      of requests. Describe your debugging process step by step.
+    tags: [debugging, observability, reliability]
+    difficulty: senior
+    follow_up: >
+      What observability tooling or instrumentation would you add proactively
+      so that next time you can diagnose this in under 5 minutes?
+    rationale: Assesses operational maturity and structured debugging approach.
+
+  - id: swe_t_004
+    text: >
+      Explain the trade-offs between strong consistency and eventual consistency.
+      Give a real example from your work where you chose one over the other.
+    tags: [distributed_systems, consistency, databases]
+    difficulty: senior
+    follow_up: >
+      In your example, what was the worst-case user impact if you had chosen
+      the opposite consistency model?
+    rationale: Gauges depth of distributed systems understanding beyond definitions.
+
+  - id: swe_t_005
+    text: >
+      Walk me through how you would review a pull request from a junior engineer
+      that solves the problem correctly but has significant readability and
+      performance issues.
+    tags: [code_review, mentorship, engineering_craft]
+    difficulty: senior
+    follow_up: >
+      How do you balance leaving detailed feedback with not demoralising someone
+      who is newer to the team?
+    rationale: Tests engineering leadership and code quality standards.

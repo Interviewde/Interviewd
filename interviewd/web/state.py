@@ -23,6 +23,9 @@ class WebInterviewState:
     # for the turn at (current_index - 1).
     awaiting_follow_up: bool = False
     current_main_answer: str = ""
+    # How many clarification responses have been given for the current question.
+    # Resets to 0 when moving to the next question. Capped at 10 to prevent loops.
+    clarification_count: int = 0
 
 
 def create(session_id: str, state: WebInterviewState) -> None:

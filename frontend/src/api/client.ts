@@ -71,10 +71,11 @@ export interface StartResponse {
 }
 
 export interface AnswerResponse {
-  status: "next_question" | "follow_up" | "complete";
+  status: "next_question" | "follow_up" | "complete" | "clarification";
   question?: QuestionPayload;
   session_id?: string;
   transcript?: string;
+  clarification_text?: string;
 }
 
 export interface AnswerScore {
@@ -125,6 +126,43 @@ export interface SessionDetail {
 }
 
 // ---------------------------------------------------------------------------
+// Practice mode types
+// ---------------------------------------------------------------------------
+
+export interface PracticeQuestionDetail {
+  id: string;
+  text: string;
+  tags: string[];
+  difficulty: string;
+  rationale: string;
+}
+
+export interface PracticeStartRequest {
+  question_ids: string[];
+  plan_id?: string;
+  plan_data?: GeneratedPlan;
+}
+
+export interface PracticeStartResponse {
+  session_id: string;
+  question: PracticeQuestionDetail;
+  index: number;
+  total: number;
+}
+
+export interface PracticeAnswerResponse {
+  agent_text: string;
+  transcript: string;
+}
+
+export interface PracticeNextResponse {
+  status: "next_question" | "complete";
+  question?: PracticeQuestionDetail;
+  index?: number;
+  total?: number;
+}
+
+// ---------------------------------------------------------------------------
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -163,6 +201,34 @@ export const api = {
       body: form,
     });
   },
+
+  endInterview: (sessionId: string): Promise<{ session_id: string | null }> =>
+    request(`/api/interview/${sessionId}/end`, { method: "POST" }),
+
+  // Practice mode
+  listPlanQuestions: (planId: string) =>
+    request<PracticeQuestionDetail[]>(`/api/plans/${planId}/questions`),
+
+  startPractice: (body: PracticeStartRequest) =>
+    request<PracticeStartResponse>("/api/practice/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+
+  submitPracticeAnswer: (sessionId: string, audioBlob: Blob): Promise<PracticeAnswerResponse> => {
+    const form = new FormData();
+    form.append("audio", audioBlob, "audio.webm");
+    return request<PracticeAnswerResponse>(`/api/practice/${sessionId}/answer`, {
+      method: "POST",
+      body: form,
+    });
+  },
+
+  nextPracticeQuestion: (sessionId: string) =>
+    request<PracticeNextResponse>(`/api/practice/${sessionId}/next`, {
+      method: "POST",
+    }),
 
   ttsUrl: (text: string) =>
     `/api/interview/tts?text=${encodeURIComponent(text)}`,

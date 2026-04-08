@@ -17,6 +17,8 @@ export default function Interview() {
   const [phase, setPhase] = useState<Phase>("answering");
   const [error, setError] = useState<string | null>(null);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
+  const [clarificationText, setClarificationText] = useState<string | null>(null);
+  const [isEnding, setIsEnding] = useState(false);
 
   const handleAudio = useCallback(
     async (blob: Blob) => {
@@ -29,7 +31,12 @@ export default function Interview() {
           setPhase("complete");
           // Brief pause so user sees the "complete" state before redirect
           setTimeout(() => navigate(`/report/${res.session_id}`), 1500);
+        } else if (res.status === "clarification") {
+          // Agent responded to a clarifying question — stay on same question
+          setClarificationText(res.clarification_text ?? null);
+          if (res.question) setQuestion(res.question);
         } else if (res.question) {
+          setClarificationText(null);
           setQuestion(res.question);
         }
       } catch (err) {
@@ -38,6 +45,23 @@ export default function Interview() {
     },
     [sessionId, navigate]
   );
+
+  const handleEndInterview = useCallback(async () => {
+    if (!confirm("End the interview now? Answers recorded so far will be scored.")) return;
+    setIsEnding(true);
+    setError(null);
+    try {
+      const res = await api.endInterview(sessionId!);
+      if (res.session_id) {
+        navigate(`/report/${res.session_id}`);
+      } else {
+        navigate("/setup");
+      }
+    } catch (err) {
+      setError(String(err));
+      setIsEnding(false);
+    }
+  }, [sessionId, navigate]);
 
   if (!question) {
     return (
@@ -63,12 +87,17 @@ export default function Interview() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Progress bar */}
+      {/* Progress bar + session info */}
       <div>
         <div className="flex justify-between text-xs text-gray-400 mb-1">
           <span>Progress</span>
-          <span>
-            {question.index + 1} / {question.total}
+          <span className="flex items-center gap-3">
+            <span className="font-mono opacity-60">
+              Session: {sessionId?.slice(0, 8)}
+            </span>
+            <span>
+              {question.index + 1} / {question.total}
+            </span>
           </span>
         </div>
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -81,6 +110,14 @@ export default function Interview() {
 
       {/* Question */}
       <QuestionCard question={question} autoPlayTts />
+
+      {/* Interviewer clarification response */}
+      {clarificationText && (
+        <div className="bg-brand-50 border border-brand-200 rounded-lg px-4 py-3 text-sm text-brand-800">
+          <span className="font-semibold text-brand-600">Interviewer: </span>
+          {clarificationText}
+        </div>
+      )}
 
       {/* Transcript preview */}
       {lastTranscript && (
@@ -108,6 +145,18 @@ export default function Interview() {
           {error}
         </p>
       )}
+
+      {/* End interview */}
+      <div className="flex justify-center pt-2">
+        <button
+          type="button"
+          onClick={handleEndInterview}
+          disabled={isEnding}
+          className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+        >
+          {isEnding ? "Ending…" : "End interview early"}
+        </button>
+      </div>
     </div>
   );
 }

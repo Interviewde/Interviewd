@@ -33,13 +33,19 @@ export default function Dashboard() {
             to="/setup"
             className="inline-block bg-white text-brand-700 font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-50 transition-colors"
           >
-            Start interview →
+            Start preset interview →
           </Link>
           <Link
             to="/setup?tab=plan"
             className="inline-block bg-brand-500 text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-400 transition-colors"
           >
-            Browse plans →
+            Plan interview →
+          </Link>
+          <Link
+            to="/practice"
+            className="inline-block bg-brand-700 text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-800 transition-colors"
+          >
+            Practice questions →
           </Link>
         </div>
       </div>

@@ -108,6 +108,31 @@ def list_plans() -> list[PlanMeta]:
     return plans
 
 
+@router.get("/{plan_id}/questions", response_model=list[PlannedQuestionOut])
+def list_plan_questions(plan_id: str) -> list[PlannedQuestionOut]:
+    """Return the full question list for a standard plan (includes rationale)."""
+    from interviewd.planner.models import InterviewPlan
+
+    plan_path = _PLANS_DIR / f"{plan_id}.yaml"
+    if not plan_path.exists():
+        raise HTTPException(404, f"Standard plan '{plan_id}' not found.")
+    try:
+        plan = InterviewPlan.from_yaml(str(plan_path))
+    except Exception as exc:
+        raise HTTPException(400, f"Could not load plan: {exc}")
+    return [
+        PlannedQuestionOut(
+            id=q.id,
+            text=q.text,
+            tags=q.tags,
+            difficulty=q.difficulty,
+            follow_up=q.follow_up,
+            rationale=getattr(q, "rationale", ""),
+        )
+        for q in plan.questions
+    ]
+
+
 @router.post("/generate", response_model=GeneratedPlan)
 async def generate_plan(
     request: Request,

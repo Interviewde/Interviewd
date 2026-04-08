@@ -47,10 +47,11 @@ class QuestionPayload(BaseModel):
 
 
 class AnswerResponse(BaseModel):
-    status: str          # "next_question" | "follow_up" | "complete"
+    status: str          # "next_question" | "follow_up" | "complete" | "clarification"
     question: QuestionPayload | None = None
     session_id: str | None = None  # set when status == "complete"
     transcript: str | None = None  # what the STT heard
+    clarification_text: str | None = None  # agent's reply to a user clarifying question
 
 
 # ---------------------------------------------------------------------------
@@ -74,10 +75,48 @@ def _question_payload(
     )
 
 
+_DETECT_CLARIFICATION_PROMPT = """\
+You are evaluating an interview exchange. The interviewer asked:
+
+Question: {question}
+
+The candidate responded:
+
+Response: {response}
+
+Is the candidate asking for clarification about the question (requesting more context, \
+constraints, details, or information) rather than actually answering it?
+Reply with exactly one word: CLARIFICATION or ANSWER."""
+
+_GENERATE_CLARIFICATION_PROMPT = """\
+You are a technical interviewer conducting an interview. You asked the candidate:
+
+Question: {question}
+
+The candidate asked for clarification:
+{clarification}
+
+Respond naturally as an interviewer — provide specific, realistic context (e.g. scale, \
+constraints, environment, assumptions) that helps them answer. Keep it to 2-3 sentences."""
+
+
 async def _should_follow_up(llm, question: str, answer: str) -> bool:
     prompt = _FOLLOW_UP_DECISION_PROMPT.format(question=question, answer=answer)
     response = await llm.complete([{"role": "user", "content": prompt}], stream=False)
     return response.strip().upper().startswith("YES")
+
+
+async def _is_clarification(llm, question: str, response: str) -> bool:
+    prompt = _DETECT_CLARIFICATION_PROMPT.format(question=question, response=response)
+    result = await llm.complete([{"role": "user", "content": prompt}], stream=False)
+    return result.strip().upper().startswith("CLARIFICATION")
+
+
+async def _generate_clarification_response(llm, question: str, clarification: str) -> str:
+    prompt = _GENERATE_CLARIFICATION_PROMPT.format(
+        question=question, clarification=clarification
+    )
+    return await llm.complete([{"role": "user", "content": prompt}], stream=False)
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +247,25 @@ async def submit_answer(
     else:
         # ---- Main answer path ----
         current_q = st.questions[st.current_index]
+
+        # Check if the candidate is asking for clarification (capped at 10 per question)
+        if st.clarification_count < 10:
+            clarifying = await _is_clarification(llm, current_q.text, transcript)
+            if clarifying:
+                clarif_text = await _generate_clarification_response(
+                    llm, current_q.text, transcript
+                )
+                st.clarification_count += 1
+                return AnswerResponse(
+                    status="clarification",
+                    question=_question_payload(st),  # stay on same question
+                    transcript=transcript,
+                    clarification_text=clarif_text,
+                )
+
+        # Treat as an actual answer — advance state
         st.current_index += 1
+        st.clarification_count = 0  # reset for the next question
 
         # Ask LLM if a follow-up is warranted (only if the question has one)
         if current_q.follow_up:
@@ -249,6 +306,33 @@ async def submit_answer(
         question=_question_payload(st),
         transcript=transcript,
     )
+
+
+@router.post("/{session_id}/end")
+async def end_interview(session_id: str, request: Request) -> dict:
+    """End an in-progress interview early. Scores partial turns if any exist."""
+    try:
+        ensure_adapters(request.app.state)
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc))
+
+    st = session_store.get(session_id)
+    if st is None:
+        raise HTTPException(404, "Session not found or expired.")
+
+    store = request.app.state.store
+    scorer = request.app.state.scorer
+
+    session_store.remove(session_id)
+
+    if not st.turns:
+        # No answers recorded yet — nothing to score
+        return {"session_id": None}
+
+    session = InterviewSession(config=st.config, turns=st.turns)
+    report = await scorer.score(session)
+    saved_id = store.save(session, report)
+    return {"session_id": saved_id}
 
 
 @router.get("/tts")

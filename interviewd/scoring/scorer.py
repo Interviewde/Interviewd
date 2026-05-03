@@ -122,10 +122,10 @@ class Scorer:
         self._llm = llm
 
     async def _score_turn(self, turn: Turn) -> AnswerScore:
-        """Score a single turn (main answer; follow-up answer appended if present)."""
+        """Score a single turn (main answer plus all follow-up answers concatenated)."""
         full_answer = turn.answer
-        if turn.follow_up_asked and turn.follow_up_answer:
-            full_answer = f"{turn.answer}\n\nFollow-up: {turn.follow_up_answer}"
+        for _, fu_a in turn.follow_ups:
+            full_answer += f"\n\nFollow-up answer: {fu_a}"
 
         prompt = _SCORE_PROMPT.format(
             question=turn.question.text,

@@ -1,24 +1,30 @@
+import traceback
 import uuid
+from datetime import datetime, timezone
 
+import structlog
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from interviewd.web.adapters import ensure_adapters
 from pydantic import BaseModel
 
+log = structlog.get_logger(__name__)
+
 from interviewd.config import InterviewConfig
-from interviewd.engine.interview import InterviewSession, Turn
+from interviewd.engine.interview import (
+    END_INTENT_MESSAGE,
+    InterviewSession,
+    ProbeResult,
+    Turn,
+    SKIP_MESSAGE,
+    detect_clarification,
+    detect_end_intent,
+    generate_clarification,
+    probe_answer,
+)
 from interviewd.web import state as session_store
+from interviewd.web.state import _reset_question_state
 
 router = APIRouter(prefix="/api/interview", tags=["interview"])
-
-# Reuse the same follow-up prompt as InterviewEngine so behaviour is consistent.
-_FOLLOW_UP_DECISION_PROMPT = """\
-The candidate just answered the following interview question:
-
-Question: {question}
-Answer: {answer}
-
-Decide whether their answer warrants a follow-up question.
-Reply with exactly one word: YES or NO."""
 
 
 # ---------------------------------------------------------------------------
@@ -31,6 +37,8 @@ class StartRequest(BaseModel):
     difficulty: str = "mid"
     num_questions: int = 5
     persona: str = "neutral"
+    # Optional session-wide cap in seconds. 0 (or omitted) disables the cap.
+    total_time_limit: int | None = None
     # Optional: load config + questions from a plan instead of the question bank.
     # Value is either a standard plan id (e.g. "swe_technical_senior") or a full
     # plan dict returned by POST /api/plans/generate.
@@ -47,11 +55,18 @@ class QuestionPayload(BaseModel):
 
 
 class AnswerResponse(BaseModel):
-    status: str          # "next_question" | "follow_up" | "complete" | "clarification"
+    status: str  # "next_question" | "follow_up" | "complete" | "clarification"
     question: QuestionPayload | None = None
-    session_id: str | None = None  # set when status == "complete"
-    transcript: str | None = None  # what the STT heard
-    clarification_text: str | None = None  # agent's reply to a user clarifying question
+    session_id: str | None = None   # set when status == "complete"
+    transcript: str | None = None   # what the STT heard
+    clarification_text: str | None = None  # agent's reply to a clarifying question
+    skip_message: str | None = None  # spoken when candidate said they don't know
+    # Why the interview ended — set alongside status="complete".
+    # One of: "completed" | "ended_by_voice" | "timed_out" | "ended_early".
+    end_reason: str | None = None
+    # Spoken acknowledgement for voice-end / timeout, so the UI can play it
+    # before redirecting to the report.
+    end_message: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +78,7 @@ def _question_payload(
     state: session_store.WebInterviewState,
     *,
     is_follow_up: bool = False,
+    override_text: str = "",
 ) -> QuestionPayload:
     idx = state.current_index
     q = state.questions[idx]
@@ -70,53 +86,67 @@ def _question_payload(
         index=idx,
         total=len(state.questions),
         id=q.id,
-        text=q.follow_up if is_follow_up else q.text,
+        text=override_text if override_text else q.text,
         is_follow_up=is_follow_up,
     )
 
 
-_DETECT_CLARIFICATION_PROMPT = """\
-You are evaluating an interview exchange. The interviewer asked:
-
-Question: {question}
-
-The candidate responded:
-
-Response: {response}
-
-Is the candidate asking for clarification about the question (requesting more context, \
-constraints, details, or information) rather than actually answering it?
-Reply with exactly one word: CLARIFICATION or ANSWER."""
-
-_GENERATE_CLARIFICATION_PROMPT = """\
-You are a technical interviewer conducting an interview. You asked the candidate:
-
-Question: {question}
-
-The candidate asked for clarification:
-{clarification}
-
-Respond naturally as an interviewer — provide specific, realistic context (e.g. scale, \
-constraints, environment, assumptions) that helps them answer. Keep it to 2-3 sentences."""
-
-
-async def _should_follow_up(llm, question: str, answer: str) -> bool:
-    prompt = _FOLLOW_UP_DECISION_PROMPT.format(question=question, answer=answer)
-    response = await llm.complete([{"role": "user", "content": prompt}], stream=False)
-    return response.strip().upper().startswith("YES")
-
-
-async def _is_clarification(llm, question: str, response: str) -> bool:
-    prompt = _DETECT_CLARIFICATION_PROMPT.format(question=question, response=response)
-    result = await llm.complete([{"role": "user", "content": prompt}], stream=False)
-    return result.strip().upper().startswith("CLARIFICATION")
-
-
-async def _generate_clarification_response(llm, question: str, clarification: str) -> str:
-    prompt = _GENERATE_CLARIFICATION_PROMPT.format(
-        question=question, clarification=clarification
+def _follow_up_payload(
+    state: session_store.WebInterviewState,
+    follow_up_text: str,
+) -> QuestionPayload:
+    """Build a payload for a dynamically generated follow-up question."""
+    q = state.questions[state.current_index - 1]
+    return QuestionPayload(
+        index=state.current_index - 1,
+        total=len(state.questions),
+        id=q.id,
+        text=follow_up_text,
+        is_follow_up=True,
     )
-    return await llm.complete([{"role": "user", "content": prompt}], stream=False)
+
+
+def _flush_partial_turn(st: session_store.WebInterviewState) -> None:
+    """If we're mid follow-up, commit the in-progress main answer + collected
+    follow-ups as a final turn so partial work isn't lost on early end."""
+    if st.awaiting_follow_up and st.current_main_answer:
+        current_q = st.questions[st.current_index - 1]
+        st.turns.append(
+            Turn(
+                question=current_q,
+                answer=st.current_main_answer,
+                follow_ups=list(st.follow_up_history),
+                clarifications=list(st.current_clarifications),
+                skipped=False,
+            )
+        )
+        _reset_question_state(st)
+
+
+async def _finalize_session(
+    session_id: str,
+    st: session_store.WebInterviewState,
+    store,
+    scorer,
+    completion_status: str,
+) -> str | None:
+    """Flush any partial state, score, persist, and remove from active state.
+
+    Returns the saved session ID, or None if there was nothing worth saving.
+    Used by the normal completion path, voice-end, time-out, and the early-end
+    button so they all share identical save semantics.
+    """
+    _flush_partial_turn(st)
+    session_store.remove(session_id)
+
+    if not st.turns:
+        return None
+
+    session = InterviewSession(config=st.config, turns=st.turns)
+    report = await scorer.score(session)
+    return store.save(
+        session, report, session_id=session_id, completion_status=completion_status
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +200,11 @@ async def start_interview(body: StartRequest, request: Request) -> dict:
             time_limit_per_question=loaded_plan.time_limit_per_question,
             language=loaded_plan.language,
             mode="pipeline",
+            total_time_limit=(
+                body.total_time_limit
+                if body.total_time_limit is not None
+                else settings.interview.total_time_limit
+            ),
         )
         questions = loaded_plan.to_questions()
 
@@ -183,6 +218,11 @@ async def start_interview(body: StartRequest, request: Request) -> dict:
             time_limit_per_question=settings.interview.time_limit_per_question,
             language=settings.interview.language,
             mode="pipeline",
+            total_time_limit=(
+                body.total_time_limit
+                if body.total_time_limit is not None
+                else settings.interview.total_time_limit
+            ),
         )
         questions = bank.pick(config)
         if not questions:
@@ -192,12 +232,17 @@ async def start_interview(body: StartRequest, request: Request) -> dict:
             )
 
     session_id = str(uuid.uuid4())
-    st = session_store.WebInterviewState(config=config, questions=questions)
+    started_at = datetime.now(timezone.utc)
+    st = session_store.WebInterviewState(
+        config=config, questions=questions, started_at=started_at
+    )
     session_store.create(session_id, st)
 
     return {
         "session_id": session_id,
         "question": _question_payload(st).model_dump(),
+        "total_time_limit": config.total_time_limit,
+        "started_at": started_at.isoformat(),
     }
 
 
@@ -222,89 +267,192 @@ async def submit_answer(
     store = request.app.state.store
     scorer = request.app.state.scorer
 
-    audio_bytes = await audio.read()
+    try:
+        audio_bytes = await audio.read()
+        content_type = audio.content_type or "audio/webm"
+        filename = "audio.webm" if "webm" in content_type else "audio.wav"
+        transcript = await stt.transcribe(audio_bytes, filename=filename)
+    except Exception as exc:
+        log.error("stt transcription failed", error=str(exc), traceback=traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {exc}") from exc
 
-    # Determine filename for format hint (browser sends webm)
-    content_type = audio.content_type or "audio/webm"
-    filename = "audio.webm" if "webm" in content_type else "audio.wav"
+    # ---- Voice-end intent: candidate explicitly asked to stop ----
+    try:
+        wants_end = await detect_end_intent(llm, transcript)
+    except Exception as exc:
+        log.error("detect_end_intent failed", error=str(exc), traceback=traceback.format_exc())
+        wants_end = False  # never block on this — fall through to normal flow
 
-    transcript = await stt.transcribe(audio_bytes, filename=filename)
+    if wants_end:
+        saved_id = await _finalize_session(
+            session_id, st, store, scorer, completion_status="ended_by_voice"
+        )
+        return AnswerResponse(
+            status="complete",
+            session_id=saved_id,
+            transcript=transcript,
+            end_reason="ended_by_voice",
+            end_message=END_INTENT_MESSAGE,
+        )
+
+    # ---- Session-wide time limit ----
+    if (
+        st.config.total_time_limit > 0
+        and st.started_at is not None
+        and (datetime.now(timezone.utc) - st.started_at).total_seconds()
+            >= st.config.total_time_limit
+    ):
+        saved_id = await _finalize_session(
+            session_id, st, store, scorer, completion_status="timed_out"
+        )
+        return AnswerResponse(
+            status="complete",
+            session_id=saved_id,
+            transcript=transcript,
+            end_reason="timed_out",
+            end_message="We've reached the time limit for this interview. Thank you for your time.",
+        )
+
+    skip_msg: str | None = None
 
     # ---- Follow-up answer path ----
     if st.awaiting_follow_up:
-        # Complete the current turn with the follow-up answer
+        # Record this follow-up exchange.
+        st.follow_up_history.append((st.current_follow_up_question, transcript))
+        st.follow_up_count += 1
+
+        current_q = st.questions[st.current_index - 1]
+        action = "satisfied"  # default when max_follow_ups already reached
+        follow_up_text = ""
+
+        if st.follow_up_count < st.config.max_follow_ups:
+            try:
+                result = await probe_answer(
+                    llm,
+                    current_q.text,
+                    transcript,
+                    list(st.follow_up_history),
+                    persona=st.config.persona,
+                )
+            except Exception as exc:
+                log.error("probe_answer (follow-up) failed", error=str(exc), traceback=traceback.format_exc())
+                raise HTTPException(status_code=500, detail=f"LLM error during follow-up evaluation: {exc}") from exc
+            action = result.action
+            follow_up_text = result.follow_up_text
+
+        if action == "follow_up":
+            # Another round of probing needed.
+            st.current_follow_up_question = follow_up_text
+            return AnswerResponse(
+                status="follow_up",
+                question=_follow_up_payload(st, follow_up_text),
+                transcript=transcript,
+            )
+
+        # Satisfied, skipped, or max reached — close this turn.
+        if action == "skip":
+            skip_msg = SKIP_MESSAGE
         turn = Turn(
-            question=st.questions[st.current_index - 1],
+            question=current_q,
             answer=st.current_main_answer,
-            follow_up_asked=True,
-            follow_up_answer=transcript,
+            follow_ups=list(st.follow_up_history),
+            clarifications=list(st.current_clarifications),
+            skipped=(action == "skip"),
         )
         st.turns.append(turn)
-        st.awaiting_follow_up = False
-        st.current_main_answer = ""
-        # Fall through to check if interview is complete
+        _reset_question_state(st)
 
     else:
         # ---- Main answer path ----
         current_q = st.questions[st.current_index]
 
-        # Check if the candidate is asking for clarification (capped at 10 per question)
-        if st.clarification_count < 10:
-            clarifying = await _is_clarification(llm, current_q.text, transcript)
-            if clarifying:
-                clarif_text = await _generate_clarification_response(
-                    llm, current_q.text, transcript
-                )
+        # Clarification detection — only if below the configured cap.
+        if st.clarification_count < st.config.max_clarifications:
+            try:
+                is_clarification = await detect_clarification(llm, current_q.text, transcript)
+            except Exception as exc:
+                log.error("clarification detection failed", error=str(exc), traceback=traceback.format_exc())
+                raise HTTPException(status_code=500, detail=f"LLM error during clarification detection: {exc}") from exc
+
+            if is_clarification:
+                try:
+                    clarif_text = await generate_clarification(
+                        llm,
+                        current_q.text,
+                        transcript,
+                        persona=st.config.persona,
+                    )
+                except Exception as exc:
+                    log.error("clarification generation failed", error=str(exc), traceback=traceback.format_exc())
+                    raise HTTPException(status_code=500, detail=f"LLM error generating clarification: {exc}") from exc
+
+                st.current_clarifications.append((transcript, clarif_text))
                 st.clarification_count += 1
                 return AnswerResponse(
                     status="clarification",
-                    question=_question_payload(st),  # stay on same question
+                    question=_question_payload(st),
                     transcript=transcript,
                     clarification_text=clarif_text,
                 )
 
-        # Treat as an actual answer — advance state
+        # Treat as an actual answer — advance to the next question slot.
         st.current_index += 1
-        st.clarification_count = 0  # reset for the next question
+        st.clarification_count = 0
 
-        # Ask LLM if a follow-up is warranted (only if the question has one)
-        if current_q.follow_up:
-            ask_follow_up = await _should_follow_up(llm, current_q.text, transcript)
-        else:
-            ask_follow_up = False
+        try:
+            result = await probe_answer(
+                llm,
+                current_q.text,
+                transcript,
+                [],
+                persona=st.config.persona,
+            )
+        except Exception as exc:
+            log.error("probe_answer failed", error=str(exc), traceback=traceback.format_exc())
+            raise HTTPException(status_code=500, detail=f"LLM error during answer evaluation: {exc}") from exc
 
-        if ask_follow_up:
+        if result.action == "follow_up" and st.config.max_follow_ups > 0:
             st.awaiting_follow_up = True
             st.current_main_answer = transcript
+            st.current_follow_up_question = result.follow_up_text
             return AnswerResponse(
                 status="follow_up",
-                question=QuestionPayload(
-                    index=st.current_index - 1,
-                    total=len(st.questions),
-                    id=current_q.id,
-                    text=current_q.follow_up,
-                    is_follow_up=True,
-                ),
+                question=_follow_up_payload(st, result.follow_up_text),
                 transcript=transcript,
             )
-        else:
-            turn = Turn(question=current_q, answer=transcript)
-            st.turns.append(turn)
+
+        # No follow-up (satisfied, skip, or max_follow_ups == 0).
+        if result.action == "skip":
+            skip_msg = SKIP_MESSAGE
+        turn = Turn(
+            question=current_q,
+            answer=transcript,
+            clarifications=list(st.current_clarifications),
+            skipped=(result.action == "skip"),
+        )
+        st.turns.append(turn)
+        st.current_clarifications.clear()
+        st.clarification_count = 0
 
     # ---- Check completion ----
     if st.current_index >= len(st.questions) and not st.awaiting_follow_up:
-        # Score and persist
-        session = InterviewSession(config=st.config, turns=st.turns)
-        report = await scorer.score(session)
-        saved_id = store.save(session, report)
-        session_store.remove(session_id)
-        return AnswerResponse(status="complete", session_id=saved_id, transcript=transcript)
+        saved_id = await _finalize_session(
+            session_id, st, store, scorer, completion_status="completed"
+        )
+        return AnswerResponse(
+            status="complete",
+            session_id=saved_id,
+            transcript=transcript,
+            skip_message=skip_msg,
+            end_reason="completed",
+        )
 
     # ---- Next question ----
     return AnswerResponse(
         status="next_question",
         question=_question_payload(st),
         transcript=transcript,
+        skip_message=skip_msg,
     )
 
 
@@ -323,15 +471,9 @@ async def end_interview(session_id: str, request: Request) -> dict:
     store = request.app.state.store
     scorer = request.app.state.scorer
 
-    session_store.remove(session_id)
-
-    if not st.turns:
-        # No answers recorded yet — nothing to score
-        return {"session_id": None}
-
-    session = InterviewSession(config=st.config, turns=st.turns)
-    report = await scorer.score(session)
-    saved_id = store.save(session, report)
+    saved_id = await _finalize_session(
+        session_id, st, store, scorer, completion_status="ended_early"
+    )
     return {"session_id": saved_id}
 
 
@@ -348,7 +490,6 @@ async def synthesize_speech(text: str, request: Request):
     tts = request.app.state.tts
     audio_bytes = await tts.synthesize(text)
 
-    # edge_tts produces MP3; piper produces WAV
     settings = request.app.state.settings
     content_type = "audio/mpeg" if settings.tts.provider == "edge_tts" else "audio/wav"
 

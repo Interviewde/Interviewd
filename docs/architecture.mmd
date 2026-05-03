@@ -2,108 +2,105 @@ flowchart TB
     subgraph Clients["Client Layer"]
         WEB["Web Browser<br/>─<br/>React + Vite"]
         CLI["CLI<br/>─<br/>Typer"]
-        SDK["Python SDK<br/>─<br/>Python package"]
     end
 
     subgraph Transport["API & Transport Layer"]
-        REST["REST API<br/>─<br/>FastAPI"]
-        WS["WebSocket Server<br/>─<br/>FastAPI WebSockets"]
+        REST["REST API<br/>─<br/>FastAPI + uvicorn"]
     end
 
     subgraph Voice["Voice Pipeline"]
-        AUDIO["Audio I/O Handler<br/>─<br/>sounddevice / PyAudio"]
+        AUDIO["Audio I/O<br/>─<br/>sounddevice"]
         VAD["Voice Activity Detection<br/>─<br/>silero-vad"]
         STT["STT Adapter<br/>─<br/>Python ABC"]
         TTS["TTS Adapter<br/>─<br/>Python ABC"]
-        TRANSCRIPT["Transcript Manager<br/>─<br/>asyncio + Pydantic"]
     end
 
     subgraph STTProviders["STT Providers"]
         GROQW["Groq Whisper — default<br/>─<br/>groq"]
         WHISPERL["Whisper Local — fallback<br/>─<br/>openai-whisper"]
-        DEEPGRAM["Deepgram<br/>─<br/>deepgram-sdk"]
-        ASSEMBLYAI["AssemblyAI<br/>─<br/>assemblyai"]
     end
 
     subgraph TTSProviders["TTS Providers"]
         EDGETTS["Edge TTS — default<br/>─<br/>edge-tts"]
         PIPER["Piper Local — fallback<br/>─<br/>piper-tts"]
-        ELEVEN["ElevenLabs<br/>─<br/>elevenlabs"]
     end
 
     subgraph Engine["Interview Engine"]
-        SM["Session State Machine<br/>─<br/>LangGraph"]
-        QG["Question Selector<br/>─<br/>LangGraph node"]
-        FU["Follow-up Generator<br/>─<br/>LangGraph + LLM"]
-        TC["Time Controller<br/>─<br/>asyncio"]
-        PM["Persona Manager<br/>─<br/>Pydantic + Jinja2"]
+        IE["InterviewEngine<br/>─<br/>async Python class"]
+        VL["VoiceLoop<br/>─<br/>VAD + STT + TTS orchestration"]
+        PROBE["Answer Probe<br/>─<br/>LLM decides: follow_up | satisfied | skip"]
+        CLARIFY["Clarification Handler<br/>─<br/>LLM detects + answers clarifications"]
+        PERSONA["Persona<br/>─<br/>friendly | neutral | adversarial"]
+    end
+
+    subgraph Planner["Interview Planner"]
+        PA["PlannerAgent<br/>─<br/>2-step LLM: analyse + generate"]
+        INGEST["Document Ingestion<br/>─<br/>pypdf / txt / md"]
+        PLAN["InterviewPlan<br/>─<br/>YAML-serializable"]
     end
 
     subgraph LLM["LLM Adapter Layer"]
-        LLMIF["Provider Interface<br/>─<br/>Python ABC"]
-        GROQ["Groq — default<br/>─<br/>groq"]
-        GEMINI["Gemini Flash<br/>─<br/>google-generativeai"]
-        OPENROUTER["OpenRouter<br/>─<br/>openai (compatible)"]
-        CEREBRAS["Cerebras<br/>─<br/>cerebras-cloud-sdk"]
-        MISTRAL["Mistral<br/>─<br/>mistralai"]
+        LLMIF["LLMAdapter ABC<br/>─<br/>auto-registry via __init_subclass__"]
+        LITELLM["LiteLLMAdapter<br/>─<br/>litellm — 100+ providers"]
     end
 
-    subgraph Scoring["Scoring & Feedback Engine"]
-        SCORER["Per-answer Scorer<br/>─<br/>Instructor + Pydantic"]
-        FILLER["Filler Word Detector<br/>─<br/>regex + custom Python"]
-        REPORT["Session Report Generator<br/>─<br/>Instructor + Pydantic"]
-        PROGRESS["Progress Tracker<br/>─<br/>SQLAlchemy"]
+    subgraph LLMProviders["LLM Providers (via LiteLLM)"]
+        GROQ["Groq — default<br/>─<br/>llama models"]
+        GEMINI["Gemini Flash<br/>─<br/>google-generativeai"]
+        OPENAI["OpenAI<br/>─<br/>openai"]
+        ANTHROPIC["Anthropic<br/>─<br/>claude models"]
+        CEREBRAS["Cerebras<br/>─<br/>cerebras-cloud-sdk"]
+    end
+
+    subgraph Scoring["Scoring & Feedback"]
+        SCORER["Scorer<br/>─<br/>per-answer STAR + relevance + clarity"]
+        REPORT["ScoreReport<br/>─<br/>aggregated averages + LLM summary"]
     end
 
     subgraph Data["Data Layer"]
-        QB["Question Bank<br/>─<br/>PyYAML + SQLite"]
-        CHROMA["Semantic Search<br/>─<br/>ChromaDB"]
-        RESUME["Resume & JD Parser<br/>─<br/>pdfplumber + spaCy"]
-        SESSIONS["Session Store<br/>─<br/>SQLAlchemy + SQLite"]
+        QB["QuestionBank<br/>─<br/>PyYAML — behavioral/technical/hr/system_design"]
+        SESSIONS["SessionStore<br/>─<br/>SQLAlchemy + SQLite"]
     end
 
     subgraph Config["Configuration Layer"]
         YAML["Master Config<br/>─<br/>PyYAML + pydantic-settings"]
-        PRESETS["Interview Presets<br/>─<br/>PyYAML"]
-        RLGUARD["Rate Limit Guard<br/>─<br/>custom Python"]
+        PRESETS["Interview Presets<br/>─<br/>YAML plans"]
+        ENV[".env<br/>─<br/>python-dotenv"]
     end
 
-    subgraph Observability["Observability Stack"]
+    subgraph Observability["Observability"]
         LOGGER["Structured Logger<br/>─<br/>structlog"]
-        OTEL["Traces<br/>─<br/>opentelemetry-python"]
-        PROM["Metrics<br/>─<br/>prometheus-client"]
-        GRAFANA["Dashboard<br/>─<br/>Grafana"]
-        REPLAY["Session Replay<br/>─<br/>SQLite + JSON"]
     end
 
     Clients --> Transport
-    Transport --> Voice
+    CLI --> Engine
     Transport --> Engine
+    Transport --> Planner
+    Transport --> Data
 
-    AUDIO --> VAD --> STT --> TRANSCRIPT
+    Engine --> VL
+    VL --> AUDIO --> VAD --> STT
     TTS --> AUDIO
     STT -.-> STTProviders
     TTS -.-> TTSProviders
 
-    TRANSCRIPT --> Engine
-    Engine --> TTS
-
+    Engine --> PROBE
+    Engine --> CLARIFY
+    Engine --> PERSONA
     Engine --> LLM
     Engine --> Scoring
     Engine --> Data
 
-    LLMIF --> GROQ & GEMINI & OPENROUTER & CEREBRAS & MISTRAL
+    Planner --> PA --> INGEST
+    PA --> LLM
 
-    Data --> QB & CHROMA & RESUME & SESSIONS
+    LLMIF --> LITELLM --> LLMProviders
+
     Scoring --> SESSIONS
+    Data --> QB & SESSIONS
 
     Config --> Engine
     Config --> LLM
     Config --> Voice
-    Config --> RLGUARD
 
-    Engine --> OTEL
-    LLM --> OTEL
-    Voice --> OTEL
-    OTEL --> PROM --> GRAFANA
-    Engine --> LOGGER --> REPLAY
+    Engine --> LOGGER

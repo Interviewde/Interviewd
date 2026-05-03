@@ -23,6 +23,7 @@ def get_session(session_id: str, request: Request) -> dict:
     return {
         "session": {
             "config": session.config.model_dump(),
+            "completion_status": saved.completion_status,
             "turns": [
                 {
                     "question": {
@@ -33,8 +34,9 @@ def get_session(session_id: str, request: Request) -> dict:
                         "follow_up": t.question.follow_up,
                     },
                     "answer": t.answer,
-                    "follow_up_asked": t.follow_up_asked,
-                    "follow_up_answer": t.follow_up_answer,
+                    "follow_ups": [{"question": q, "answer": a} for q, a in t.follow_ups],
+                    "clarifications": [{"candidate": cq, "agent": ca} for cq, ca in t.clarifications],
+                    "skipped": t.skipped,
                 }
                 for t in session.turns
             ],

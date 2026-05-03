@@ -14,6 +14,21 @@ function ScoreStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  ended_early: {
+    label: "Ended early",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  timed_out: {
+    label: "Timed out",
+    className: "bg-orange-50 text-orange-700 border-orange-200",
+  },
+  ended_by_voice: {
+    label: "Ended by voice",
+    className: "bg-purple-50 text-purple-700 border-purple-200",
+  },
+};
+
 export default function Report() {
   const { sessionId } = useParams<{ sessionId: string }>();
 
@@ -43,7 +58,19 @@ export default function Report() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Interview Report</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-800">Interview Report</h1>
+            {session.completion_status &&
+              STATUS_BADGE[session.completion_status] && (
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                    STATUS_BADGE[session.completion_status].className
+                  }`}
+                >
+                  {STATUS_BADGE[session.completion_status].label}
+                </span>
+              )}
+          </div>
           <p className="text-sm text-gray-500 mt-1 capitalize">
             {cfg.type.replace("_", " ")} · {cfg.difficulty} · {session.turns.length} question
             {session.turns.length !== 1 ? "s" : ""}

@@ -82,6 +82,7 @@ function ManualTab() {
     num_questions: 5,
     persona: "neutral" as (typeof PERSONAS)[number],
     mode: "pipeline" as "pipeline" | "live",
+    total_time_limit_min: 0, // 0 disables the cap
   });
 
   const mutation = useMutation({
@@ -91,10 +92,15 @@ function ManualTab() {
         difficulty: form.difficulty,
         num_questions: form.num_questions,
         persona: form.persona,
+        total_time_limit: form.total_time_limit_min * 60,
       }),
     onSuccess: (data) => {
       navigate(`/interview/${data.session_id}`, {
-        state: { question: data.question },
+        state: {
+          question: data.question,
+          total_time_limit: data.total_time_limit,
+          started_at: data.started_at,
+        },
       });
     },
   });
@@ -147,6 +153,30 @@ function ManualTab() {
           <div className="flex justify-between text-xs text-gray-400 mt-1">
             <span>1</span>
             <span>10</span>
+          </div>
+        </Field>
+
+        <Field
+          label={
+            form.total_time_limit_min === 0
+              ? "Total time limit: no cap"
+              : `Total time limit: ${form.total_time_limit_min} min`
+          }
+        >
+          <input
+            type="range"
+            min={0}
+            max={60}
+            step={5}
+            value={form.total_time_limit_min}
+            onChange={(e) =>
+              set("total_time_limit_min", Number(e.target.value))
+            }
+            className="w-full accent-brand-600"
+          />
+          <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <span>off</span>
+            <span>60 min</span>
           </div>
         </Field>
 
@@ -255,7 +285,11 @@ function StandardPlansSection() {
       }),
     onSuccess: (data) => {
       navigate(`/interview/${data.session_id}`, {
-        state: { question: data.question },
+        state: {
+          question: data.question,
+          total_time_limit: data.total_time_limit,
+          started_at: data.started_at,
+        },
       });
     },
   });
@@ -336,7 +370,11 @@ function GenerateSection() {
       }),
     onSuccess: (data) => {
       navigate(`/interview/${data.session_id}`, {
-        state: { question: data.question },
+        state: {
+          question: data.question,
+          total_time_limit: data.total_time_limit,
+          started_at: data.started_at,
+        },
       });
     },
   });

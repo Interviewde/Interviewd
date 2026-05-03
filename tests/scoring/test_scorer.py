@@ -24,12 +24,8 @@ def _make_question(id: str = "b001") -> Question:
 
 def _make_turn(answer: str = "I overcame it by X.", follow_up: bool = False) -> Turn:
     q = _make_question()
-    return Turn(
-        question=q,
-        answer=answer,
-        follow_up_asked=follow_up,
-        follow_up_answer="I'd do Y next time." if follow_up else "",
-    )
+    follow_ups = [("What would you do differently?", "I'd do Y next time.")] if follow_up else []
+    return Turn(question=q, answer=answer, follow_ups=follow_ups)
 
 
 def _make_session(turns: list[Turn]) -> InterviewSession:
@@ -184,7 +180,7 @@ async def test_score_appends_follow_up_to_answer():
     # The first LLM call (scoring) should receive the combined answer
     score_call_prompt = scorer._llm.complete.await_args_list[0].args[0][0]["content"]
     assert "Main answer." in score_call_prompt
-    assert "Follow-up: I'd do Y next time." in score_call_prompt
+    assert "Follow-up answer: I'd do Y next time." in score_call_prompt
 
 
 @pytest.mark.asyncio

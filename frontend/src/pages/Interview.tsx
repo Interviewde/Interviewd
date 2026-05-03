@@ -1,10 +1,18 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, type QuestionPayload } from "../api/client";
 import AudioRecorder from "../components/AudioRecorder";
 import QuestionCard from "../components/QuestionCard";
 
 type Phase = "answering" | "complete";
+
+const PHASE_COMPLETE_DELAY_MS = 2000;
+
+function formatTime(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export default function Interview() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -19,6 +27,24 @@ export default function Interview() {
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const [clarificationText, setClarificationText] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
+  const [endMessage, setEndMessage] = useState<string | null>(null);
+
+  // Session-wide countdown — only rendered when total_time_limit > 0.
+  const totalTimeLimit = (location.state?.total_time_limit as number) ?? 0;
+  const startedAt = (location.state?.started_at as string) ?? null;
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (totalTimeLimit <= 0 || !startedAt) return;
+    const startMs = new Date(startedAt).getTime();
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - startMs) / 1000);
+      setSecondsLeft(Math.max(0, totalTimeLimit - elapsed));
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [totalTimeLimit, startedAt]);
 
   const handleAudio = useCallback(
     async (blob: Blob) => {
@@ -29,8 +55,12 @@ export default function Interview() {
 
         if (res.status === "complete" && res.session_id) {
           setPhase("complete");
+          if (res.end_message) setEndMessage(res.end_message);
           // Brief pause so user sees the "complete" state before redirect
-          setTimeout(() => navigate(`/report/${res.session_id}`), 1500);
+          setTimeout(
+            () => navigate(`/report/${res.session_id}`),
+            res.end_message ? PHASE_COMPLETE_DELAY_MS : 1500
+          );
         } else if (res.status === "clarification") {
           // Agent responded to a clarifying question — stay on same question
           setClarificationText(res.clarification_text ?? null);
@@ -80,6 +110,9 @@ export default function Interview() {
       <div className="flex flex-col items-center justify-center py-24 space-y-4 text-center">
         <p className="text-5xl">✅</p>
         <h2 className="text-2xl font-bold text-gray-800">Interview complete!</h2>
+        {endMessage && (
+          <p className="text-gray-700 text-sm max-w-md">{endMessage}</p>
+        )}
         <p className="text-gray-500 text-sm">Scoring your answers…</p>
       </div>
     );
@@ -92,6 +125,16 @@ export default function Interview() {
         <div className="flex justify-between text-xs text-gray-400 mb-1">
           <span>Progress</span>
           <span className="flex items-center gap-3">
+            {secondsLeft !== null && (
+              <span
+                className={`font-mono ${
+                  secondsLeft <= 30 ? "text-red-500 font-semibold" : ""
+                }`}
+                title="Time remaining"
+              >
+                ⏱ {formatTime(secondsLeft)}
+              </span>
+            )}
             <span className="font-mono opacity-60">
               Session: {sessionId?.slice(0, 8)}
             </span>

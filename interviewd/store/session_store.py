@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
     persona                 TEXT NOT NULL,
     language                TEXT NOT NULL,
     score_summary           TEXT,
-    avg_overall             REAL
+    avg_overall             REAL,
+    completion_status       TEXT NOT NULL DEFAULT 'completed',
+    total_time_limit        INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS turns (
@@ -34,8 +36,9 @@ CREATE TABLE IF NOT EXISTS turns (
     question_difficulty TEXT NOT NULL,
     question_follow_up  TEXT NOT NULL DEFAULT '',
     answer              TEXT NOT NULL,
-    follow_up_asked     INTEGER NOT NULL DEFAULT 0,
-    follow_up_answer    TEXT NOT NULL DEFAULT ''
+    follow_ups_json     TEXT NOT NULL DEFAULT '[]',
+    clarifications_json TEXT NOT NULL DEFAULT '[]',
+    skipped             INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS answer_scores (
@@ -51,11 +54,21 @@ CREATE TABLE IF NOT EXISTS answer_scores (
 );
 """
 
+# Applied once to existing databases that pre-date the follow_ups_json schema.
+_MIGRATIONS = [
+    "ALTER TABLE turns ADD COLUMN follow_ups_json TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE turns ADD COLUMN clarifications_json TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE turns ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE interview_sessions ADD COLUMN completion_status TEXT NOT NULL DEFAULT 'completed'",
+    "ALTER TABLE interview_sessions ADD COLUMN total_time_limit INTEGER NOT NULL DEFAULT 0",
+]
+
 
 class SavedSession(NamedTuple):
     session_id: str
     interview_session: InterviewSession
     score_report: ScoreReport
+    completion_status: str = "completed"
 
 
 class SessionStore:
@@ -78,6 +91,12 @@ class SessionStore:
         self._db_path = str(self._dir / "interviews.db")
         with self._connect() as con:
             con.executescript(_DDL)
+            for sql in _MIGRATIONS:
+                try:
+                    con.execute(sql)
+                    con.commit()
+                except sqlite3.OperationalError:
+                    pass  # column already exists
 
     def _connect(self) -> sqlite3.Connection:
         con = sqlite3.connect(self._db_path)
@@ -89,9 +108,24 @@ class SessionStore:
     # Write
     # ------------------------------------------------------------------
 
-    def save(self, session: InterviewSession, report: ScoreReport) -> str:
-        """Persist a session and its score report.  Returns the session ID."""
-        session_id = str(uuid.uuid4())
+    def save(
+        self,
+        session: InterviewSession,
+        report: ScoreReport,
+        session_id: str | None = None,
+        completion_status: str = "completed",
+    ) -> str:
+        """Persist a session and its score report. Returns the session ID.
+
+        If ``session_id`` is provided it is used as the primary key (so the
+        UI-visible session ID matches what's stored). Otherwise a fresh UUID
+        is generated.
+
+        ``completion_status`` is one of: "completed", "ended_early",
+        "timed_out", "ended_by_voice".
+        """
+        if session_id is None:
+            session_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
 
         with self._connect() as con:
@@ -99,8 +133,9 @@ class SessionStore:
                 """INSERT INTO interview_sessions
                    (id, created_at, interview_type, difficulty, num_questions,
                     time_limit_per_question, persona, language,
-                    score_summary, avg_overall)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    score_summary, avg_overall,
+                    completion_status, total_time_limit)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     session_id, now,
                     session.config.type, session.config.difficulty,
@@ -108,6 +143,7 @@ class SessionStore:
                     session.config.time_limit_per_question,
                     session.config.persona, session.config.language,
                     report.summary, report.average_overall,
+                    completion_status, session.config.total_time_limit,
                 ),
             )
 
@@ -115,15 +151,18 @@ class SessionStore:
                 """INSERT INTO turns
                    (session_id, position, question_id, question_text,
                     question_tags, question_difficulty, question_follow_up,
-                    answer, follow_up_asked, follow_up_answer)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    answer, follow_ups_json, clarifications_json, skipped)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                 [
                     (
                         session_id, pos,
                         t.question.id, t.question.text,
                         json.dumps(t.question.tags),
                         t.question.difficulty, t.question.follow_up,
-                        t.answer, int(t.follow_up_asked), t.follow_up_answer,
+                        t.answer,
+                        json.dumps(t.follow_ups),
+                        json.dumps(t.clarifications),
+                        int(t.skipped),
                     )
                     for pos, t in enumerate(session.turns)
                 ],
@@ -171,6 +210,7 @@ class SessionStore:
                 time_limit_per_question=row["time_limit_per_question"],
                 persona=row["persona"],
                 language=row["language"],
+                total_time_limit=row["total_time_limit"] if "total_time_limit" in row.keys() else 0,
             )
 
             turn_rows = con.execute(
@@ -187,8 +227,9 @@ class SessionStore:
                         follow_up=t["question_follow_up"],
                     ),
                     answer=t["answer"],
-                    follow_up_asked=bool(t["follow_up_asked"]),
-                    follow_up_answer=t["follow_up_answer"],
+                    follow_ups=[tuple(p) for p in json.loads(t["follow_ups_json"])],
+                    clarifications=[tuple(p) for p in json.loads(t["clarifications_json"])],
+                    skipped=bool(t["skipped"]),
                 )
                 for t in turn_rows
             ]
@@ -213,6 +254,7 @@ class SessionStore:
             session_id=session_id,
             interview_session=InterviewSession(config=config, turns=turns),
             score_report=ScoreReport(scores=scores, summary=row["score_summary"] or ""),
+            completion_status=row["completion_status"] if "completion_status" in row.keys() else "completed",
         )
 
     def list_sessions(self) -> list[dict]:
@@ -223,7 +265,8 @@ class SessionStore:
         """
         with self._connect() as con:
             rows = con.execute(
-                """SELECT id, created_at, interview_type, difficulty, avg_overall
+                """SELECT id, created_at, interview_type, difficulty, avg_overall,
+                          completion_status, total_time_limit
                    FROM interview_sessions
                    ORDER BY created_at DESC, rowid DESC"""
             ).fetchall()

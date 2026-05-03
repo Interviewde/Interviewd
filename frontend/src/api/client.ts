@@ -1,11 +1,19 @@
 // Typed API client — all fetch calls go through here.
 
+export type CompletionStatus =
+  | "completed"
+  | "ended_early"
+  | "timed_out"
+  | "ended_by_voice";
+
 export interface SessionRow {
   id: string;
   created_at: string;
   interview_type: string;
   difficulty: string;
   avg_overall: number | null;
+  completion_status?: CompletionStatus;
+  total_time_limit?: number;
 }
 
 export interface QuestionPayload {
@@ -61,6 +69,7 @@ export interface StartRequest {
   difficulty: string;
   num_questions: number;
   persona: string;
+  total_time_limit?: number;
   plan_id?: string;
   plan_data?: GeneratedPlan;
 }
@@ -68,6 +77,8 @@ export interface StartRequest {
 export interface StartResponse {
   session_id: string;
   question: QuestionPayload;
+  total_time_limit: number;
+  started_at: string;
 }
 
 export interface AnswerResponse {
@@ -76,6 +87,9 @@ export interface AnswerResponse {
   session_id?: string;
   transcript?: string;
   clarification_text?: string;
+  skip_message?: string;
+  end_reason?: "completed" | "ended_by_voice" | "timed_out" | "ended_early";
+  end_message?: string;
 }
 
 export interface AnswerScore {
@@ -119,7 +133,9 @@ export interface SessionDetail {
       num_questions: number;
       persona: string;
       mode: string;
+      total_time_limit?: number;
     };
+    completion_status?: CompletionStatus;
     turns: Turn[];
   };
   report: ScoreReport;

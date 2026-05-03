@@ -124,13 +124,13 @@ async def test_engine_scorer_store_pipeline(tmp_path):
     )
     questions = bank.pick(config, seed=42)
 
-    # LLM responses: greeting + (follow_up decision per question) + closing
+    # LLM responses: greeting + (clarif-detect + probe per question) + closing
     # + (score JSON per question) + summary
     score_json = '{"star_score": 7, "relevance_score": 8, "clarity_score": 6, "feedback": "Good answer."}'
     llm_responses = [
         "Welcome to your interview!",   # greeting
-        "NO",                           # follow-up decision Q1
-        "NO",                           # follow-up decision Q2
+        "ANSWER", "SATISFIED",          # Q1: clarif-detect → answer, probe → satisfied
+        "ANSWER", "SATISFIED",          # Q2: clarif-detect → answer, probe → satisfied
         "Thanks for your time.",        # closing
         score_json,                     # score Q1
         score_json,                     # score Q2
@@ -138,14 +138,14 @@ async def test_engine_scorer_store_pipeline(tmp_path):
     ]
 
     voice_loop = _make_voice_loop(["My answer to Q1.", "My answer to Q2."])
-    engine = InterviewEngine(voice_loop, _make_llm(llm_responses[:4]), config, questions)
+    engine = InterviewEngine(voice_loop, _make_llm(llm_responses[:6]), config, questions)
     session = await engine.run()
 
     assert isinstance(session, InterviewSession)
     assert len(session.turns) == 2
     assert session.turns[0].answer == "My answer to Q1."
 
-    scorer = Scorer(_make_llm(llm_responses[4:]))
+    scorer = Scorer(_make_llm(llm_responses[6:]))
     report = await scorer.score(session)
 
     assert len(report.scores) == 2
@@ -170,17 +170,18 @@ async def test_pipeline_transcript_is_consistent_with_turns(tmp_path):
     questions = bank.pick(config, seed=7)
 
     score_json = '{"star_score": 5, "relevance_score": 6, "clarity_score": 7, "feedback": "OK."}'
-    llm_responses = ["Hi!", "YES", "Thanks!", score_json, "Summary text."]
+    # LLM: greeting, clarif-detect→ANSWER, probe1→follow-up Q, probe2→SATISFIED, closing
+    llm_responses = ["Hi!", "ANSWER", "Could you elaborate?", "SATISFIED", "Thanks!", score_json, "Summary text."]
 
     voice_loop = _make_voice_loop(["My main answer.", "My follow-up answer."])
-    engine = InterviewEngine(voice_loop, _make_llm(llm_responses[:3]), config, questions)
+    engine = InterviewEngine(voice_loop, _make_llm(llm_responses[:5]), config, questions)
     session = await engine.run()
 
     transcript = session.transcript
     speakers = [line["speaker"] for line in transcript]
 
     # With one follow-up: interviewer Q, candidate A, interviewer FU, candidate FU-A
-    if session.turns[0].follow_up_asked:
+    if session.turns[0].follow_ups:
         assert speakers == ["interviewer", "candidate", "interviewer", "candidate"]
     else:
         assert speakers == ["interviewer", "candidate"]
@@ -195,9 +196,9 @@ async def test_pipeline_multiple_types_produce_valid_sessions(tmp_path):
         config = InterviewConfig(type=interview_type, difficulty="mid", num_questions=1)
         questions = bank.pick(config, seed=0)
 
-        llm_responses = ["Hello!", "NO", "Bye!", '{"star_score":5,"relevance_score":5,"clarity_score":5,"feedback":"ok"}', "Summary."]
+        llm_responses = ["Hello!", "ANSWER", "SATISFIED", "Bye!", '{"star_score":5,"relevance_score":5,"clarity_score":5,"feedback":"ok"}', "Summary."]
         voice_loop = _make_voice_loop(["My answer."])
-        engine = InterviewEngine(voice_loop, _make_llm(llm_responses[:3]), config, questions)
+        engine = InterviewEngine(voice_loop, _make_llm(llm_responses[:4]), config, questions)
         session = await engine.run()
 
         scorer = Scorer(_make_llm(llm_responses[3:]))

@@ -56,6 +56,16 @@ class InterviewConfig(BaseModel):
     # live     = single real-time voice LLM API (lower latency, higher cost)
     # See docs/decisions/005-dual-path-interview-engine.md
     mode: Literal["pipeline", "live"] = "pipeline"
+    # Max follow-up questions per main question. The engine stops early if the
+    # candidate's answer is judged satisfactory before this limit is reached.
+    max_follow_ups: int = 3
+    # Max clarification exchanges per question before the next response is
+    # treated as the candidate's answer regardless.
+    max_clarifications: int = 2
+    # Maximum total interview duration in seconds. 0 disables the cap.
+    # When exceeded, the current answer is saved and the session ends with
+    # completion_status="timed_out".
+    total_time_limit: int = 0
 
 
 class LiveLLMConfig(BaseModel):

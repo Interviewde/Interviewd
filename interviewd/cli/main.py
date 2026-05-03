@@ -266,9 +266,11 @@ def report(
     for i, turn in enumerate(session.turns, start=1):
         typer.echo(f"\nQ{i}: {turn.question.text}\n")
         typer.echo(f"  You: {turn.answer}")
-        if turn.follow_up_asked:
-            typer.echo(f"\n  Follow-up: {turn.question.follow_up}")
-            typer.echo(f"  You: {turn.follow_up_answer}")
+        if turn.skipped:
+            typer.echo("  (Candidate skipped — did not know the answer)")
+        for fu_q, fu_a in turn.follow_ups:
+            typer.echo(f"\n  Follow-up: {fu_q}")
+            typer.echo(f"  You: {fu_a}")
 
         score = scores_by_qid.get(turn.question.id)
         if score:
